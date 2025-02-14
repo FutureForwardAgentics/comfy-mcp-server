@@ -8,6 +8,7 @@ This script sets up a server using the FastMCP framework to generate images base
 
 - Python 3.x installed.
 - Required packages: `mcp`, `json`, `urllib`, `time`, `os`.
+- Workflow file exported from Comfy. This code uses `Flux-Dev-ComfyUI-Workflow.json` which is only used here as reference. You will need to export from your workflow and make necessary adjustments to lines [13](https://github.com/lalanikarim/comfy-mcp-server/blob/main/comfy-mcp-server.py#L13) and [24](https://github.com/lalanikarim/comfy-mcp-server/blob/main/comfy-mcp-server.py#L24).
 
 You can install the required packages using pip:
 
