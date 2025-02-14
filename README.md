@@ -12,7 +12,7 @@ This script sets up a server using the FastMCP framework to generate images base
 You can install the required packages using pip:
 
 ```bash
-pip install mcp
+pip install "mcp[cli]"
 ```
 
 ## Configuration
