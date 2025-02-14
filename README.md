@@ -1,5 +1,7 @@
 # Comfy MCP Server
 
+> A server using FastMCP framework to generate images based on prompts via a remote Comfy server.
+
 ## Overview
 
 This script sets up a server using the FastMCP framework to generate images based on prompts using a specified workflow. It interacts with a remote Comfy server to submit prompts and retrieve generated images.
