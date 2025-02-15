@@ -8,20 +8,35 @@ import os
 mcp = FastMCP("Comfy MCP Server")
 
 host = os.environ.get("COMFY_URL")
-mcp_dir = os.path.dirname(__file__)
+workflow = os.environ.get("COMFY_WORKFLOW_JSON_FILE")
+
 prompt_template = json.load(
-    open(f"{mcp_dir}/Flux-Dev-ComfyUI-Workflow.json", "r")
-)
+    open(workflow, "r")
+) if workflow is not None else None
+
+prompt_node_id = os.environ.get("PROMPT_NODE_ID")
+output_node_id = os.environ.get("OUTPUT_NODE_ID")
 
 
 @mcp.tool()
 def generate_image(prompt: str, ctx: Context) -> Image | str:
-    """Generate an image using Flux dev workflow on Comfy"""
+    """Generate an image using ComfyUI workflow"""
 
+    errors = []
     if host is None:
-        return "COMFY_URL environment variable not set"
+        errors.append("COMFY_URL environment variable not set")
+    if workflow is None:
+        errors.append("COMFY_WORKFLOW_JSON_FILE environment variable not set")
+    if prompt_node_id is None:
+        errors.append("PROMPT_NODE_ID environment variable not set")
+    if output_node_id is None:
+        errors.append("OUTPUT_NODE_ID environment variable not set")
 
-    prompt_template['6']['inputs']['text'] = prompt
+    if len(errors) > 0:
+        errors = ["Failed to generate image."] + errors
+        return "\n".join(errors)
+
+    prompt_template[prompt_node_id]['inputs']['text'] = prompt
     p = {"prompt": prompt_template}
     data = json.dumps(p).encode('utf-8')
     req = request.Request(f"{host}/prompt", data)
@@ -46,7 +61,7 @@ def generate_image(prompt: str, ctx: Context) -> Image | str:
                     if status:
                         output_data = (
                             history_resp_data[prompt_id]
-                            ['outputs']['9']['images'][0]
+                            ['outputs'][output_node_id]['images'][0]
                         )
                         url_values = urllib.parse.urlencode(output_data)
                         file_req = request.Request(

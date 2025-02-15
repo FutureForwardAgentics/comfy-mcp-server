@@ -10,7 +10,7 @@ This script sets up a server using the FastMCP framework to generate images base
 
 - Python 3.x installed.
 - Required packages: `mcp`, `json`, `urllib`, `time`, `os`.
-- Workflow file exported from Comfy. This code uses `Flux-Dev-ComfyUI-Workflow.json` which is only used here as reference. You will need to export from your workflow and make necessary adjustments to lines [13](https://github.com/lalanikarim/comfy-mcp-server/blob/main/comfy-mcp-server.py#L13) and [24](https://github.com/lalanikarim/comfy-mcp-server/blob/main/comfy-mcp-server.py#L24).
+- Workflow file exported from Comfy UI. This code includes a sample `Flux-Dev-ComfyUI-Workflow.json` which is only used here as reference. You will need to export from your workflow and set the environment variables accordingly.
 
 You can install the required packages using pip:
 
@@ -20,12 +20,20 @@ pip install "mcp[cli]"
 
 ## Configuration
 
-Set the `COMFY_URL` environment variable to point to your Comfy server URL.
+Set the following environment variables:
+
+- `COMFY_URL` to point to your Comfy server URL.
+- `COMFY_WORKFLOW_JSON_FILE` to point to the absolute path of the API export json file for the comfyui workflow.
+- `PROMPT_NODE_ID` to the id of the text prompt node.
+- `OUTPUT_NODE_ID` to the id of the output node with the final image.
 
 Example:
 
 ```bash
 export COMFY_URL=http://your-comfy-server-url:port
+export COMFY_WORKFLOW_JSON_FILE=/path/to/the/comfyui_workflow_export.json
+export PROMPT_NODE_ID=6 # use the correct node id here
+export OUTPUT_NODE_ID=9 # use the correct node id here
 ```
 
 ## Usage
@@ -44,7 +52,7 @@ The server will start and listen for requests to generate images based on the pr
 
 This function generates an image using a specified prompt. It follows these steps:
 
-1. Checks if the `COMFY_URL` environment variable is set.
+1. Checks if all the environment variable are set.
 2. Loads a prompt template from a JSON file.
 3. Submits the prompt to the Comfy server.
 4. Polls the server for the status of the prompt processing.
