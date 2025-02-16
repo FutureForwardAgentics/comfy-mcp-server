@@ -8,14 +8,13 @@ This script sets up a server using the FastMCP framework to generate images base
 
 ## Prerequisites
 
-- Python 3.x installed.
-- Required packages: `mcp`, `json`, `urllib`, `time`, `os`.
+- [uv](https://docs.astral.sh/uv/) package and project manager for Python.
 - Workflow file exported from Comfy UI. This code includes a sample `Flux-Dev-ComfyUI-Workflow.json` which is only used here as reference. You will need to export from your workflow and set the environment variables accordingly.
 
-You can install the required packages using pip:
+You can install the required packages for local development:
 
 ```bash
-pip install "mcp[cli]"
+uvx mcp[cli]
 ```
 
 ## Configuration
@@ -38,13 +37,33 @@ export OUTPUT_NODE_ID=9 # use the correct node id here
 
 ## Usage
 
-Run the script directly:
+Comfy MCP Server can be launched by the following command:
 
 ```bash
-python comfy-mcp-server.py
+uvx comfy-mcp-server
 ```
 
-The server will start and listen for requests to generate images based on the provided prompts.
+### Example Claude Desktop Config
+
+```json
+{
+  "mcpServers": {
+    "Comfy MCP Server": {
+      "command": "/path/to/uvx",
+      "args": [
+        "comfy-mcp-server"
+      ],
+      "env": {
+        "COMFY_URL": "http://your-comfy-server-url:port",
+        "COMFY_WORKFLOW_JSON_FILE": "/path/to/the/comfyui_workflow_export.json",
+        "PROMPT_NODE_ID": "6",
+        "OUTPUT_NODE_ID": "9"
+      }
+    }
+  }
+}
+
+```
 
 ## Functionality
 
@@ -68,4 +87,4 @@ This function generates an image using a specified prompt. It follows these step
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/lalanikarim/comfy-mcp-server/blob/main/LICENSE) file for details.
