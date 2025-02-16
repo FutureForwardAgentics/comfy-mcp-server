@@ -1,9 +1,31 @@
 [project]
 name = "comfy-mcp-server"
-version = "0.1.0"
-description = "Add your description here"
+version = "0.1.6"
+description = "MCP Server for ComfyUI text to image Workflow"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "mcp[cli]>=1.2.1",
 ]
+authors = [
+    {name = "Karim Lalani", email = "jimmy00784@gmail.com"},
+]
+maintainers = [
+    {name = "Karim Lalani", email = "jimmy00784@gmail.com"},
+]
+license = "MIT"
+license-files = ["LICENSE"]
+
+[project.urls]
+Homepage = "https://github.com/lalanikarim/comfy-mcp-server/"
+Repository = "https://github.com/lalanikarim/comfy-mcp-server/"
+
+[project.scripts]
+comfy-mcp-server = "comfy_mcp_server:run_server"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/comfy_mcp_server"]

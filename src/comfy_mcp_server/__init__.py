@@ -22,20 +22,6 @@ output_node_id = os.environ.get("OUTPUT_NODE_ID")
 def generate_image(prompt: str, ctx: Context) -> Image | str:
     """Generate an image using ComfyUI workflow"""
 
-    errors = []
-    if host is None:
-        errors.append("COMFY_URL environment variable not set")
-    if workflow is None:
-        errors.append("COMFY_WORKFLOW_JSON_FILE environment variable not set")
-    if prompt_node_id is None:
-        errors.append("PROMPT_NODE_ID environment variable not set")
-    if output_node_id is None:
-        errors.append("OUTPUT_NODE_ID environment variable not set")
-
-    if len(errors) > 0:
-        errors = ["Failed to generate image."] + errors
-        return "\n".join(errors)
-
     prompt_template[prompt_node_id]['inputs']['text'] = prompt
     p = {"prompt": prompt_template}
     data = json.dumps(p).encode('utf-8')
@@ -83,5 +69,24 @@ def generate_image(prompt: str, ctx: Context) -> Image | str:
         return "Failed to generate image. Please check server logs."
 
 
+def run_server():
+    errors = []
+    if host is None:
+        errors.append("- COMFY_URL environment variable not set")
+    if workflow is None:
+        errors.append(
+            "- COMFY_WORKFLOW_JSON_FILE environment variable not set")
+    if prompt_node_id is None:
+        errors.append("- PROMPT_NODE_ID environment variable not set")
+    if output_node_id is None:
+        errors.append("- OUTPUT_NODE_ID environment variable not set")
+
+    if len(errors) > 0:
+        errors = ["Failed to start Comfy MCP Server:"] + errors
+        return "\n".join(errors)
+    else:
+        mcp.run()
+
+
 if __name__ == "__main__":
-    mcp.run()
+    run_server()
