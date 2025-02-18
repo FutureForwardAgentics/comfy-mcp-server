@@ -8,6 +8,9 @@ import os
 mcp = FastMCP("Comfy MCP Server")
 
 host = os.environ.get("COMFY_URL")
+override_host = os.environ.get("COMFY_URL_EXTERNAL")
+if override_host is None:
+    override_host = host
 workflow = os.environ.get("COMFY_WORKFLOW_JSON_FILE")
 
 prompt_template = json.load(
@@ -17,6 +20,10 @@ prompt_template = json.load(
 prompt_node_id = os.environ.get("PROMPT_NODE_ID")
 output_node_id = os.environ.get("OUTPUT_NODE_ID")
 output_mode = os.environ.get("OUTPUT_MODE")
+
+
+def get_file_url(server: str, url_values: str) -> str:
+    return f"{server}/view?{url_values}"
 
 
 @mcp.tool()
@@ -51,7 +58,9 @@ def generate_image(prompt: str, ctx: Context) -> Image | str:
                             ['outputs'][output_node_id]['images'][0]
                         )
                         url_values = urllib.parse.urlencode(output_data)
-                        file_url = f"{host}/view?{url_values}"
+                        file_url = get_file_url(host, url_values)
+                        override_file_url = get_file_url(
+                            override_host, url_values)
                         file_req = request.Request(file_url)
                         file_resp = request.urlopen(file_req)
                         if file_resp.status == 200:
@@ -66,7 +75,7 @@ def generate_image(prompt: str, ctx: Context) -> Image | str:
 
     if response_ready:
         if output_mode is not None and output_mode.lower() == "url":
-            return file_url
+            return override_file_url
         return Image(data=output_file, format="png")
     else:
         return "Failed to generate image. Please check server logs."
