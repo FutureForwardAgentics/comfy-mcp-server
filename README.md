@@ -25,6 +25,7 @@ Set the following environment variables:
 - `COMFY_WORKFLOW_JSON_FILE` to point to the absolute path of the API export json file for the comfyui workflow.
 - `PROMPT_NODE_ID` to the id of the text prompt node.
 - `OUTPUT_NODE_ID` to the id of the output node with the final image.
+- `OUTPUT_MODE` to either `url` or `file` to select desired output.
 
 Example:
 
@@ -33,6 +34,7 @@ export COMFY_URL=http://your-comfy-server-url:port
 export COMFY_WORKFLOW_JSON_FILE=/path/to/the/comfyui_workflow_export.json
 export PROMPT_NODE_ID=6 # use the correct node id here
 export OUTPUT_NODE_ID=9 # use the correct node id here
+export OUTPUT_MODE=file
 ```
 
 ## Usage
@@ -57,7 +59,8 @@ uvx comfy-mcp-server
         "COMFY_URL": "http://your-comfy-server-url:port",
         "COMFY_WORKFLOW_JSON_FILE": "/path/to/the/comfyui_workflow_export.json",
         "PROMPT_NODE_ID": "6",
-        "OUTPUT_NODE_ID": "9"
+        "OUTPUT_NODE_ID": "9",
+        "OUTPUT_MODE": "file",
       }
     }
   }

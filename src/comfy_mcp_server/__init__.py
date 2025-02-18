@@ -16,6 +16,7 @@ prompt_template = json.load(
 
 prompt_node_id = os.environ.get("PROMPT_NODE_ID")
 output_node_id = os.environ.get("OUTPUT_NODE_ID")
+output_mode = os.environ.get("OUTPUT_MODE")
 
 
 @mcp.tool()
@@ -50,8 +51,8 @@ def generate_image(prompt: str, ctx: Context) -> Image | str:
                             ['outputs'][output_node_id]['images'][0]
                         )
                         url_values = urllib.parse.urlencode(output_data)
-                        file_req = request.Request(
-                            f"{host}/view?{url_values}")
+                        file_url = f"{host}/view?{url_values}"
+                        file_req = request.Request(file_url)
                         file_resp = request.urlopen(file_req)
                         if file_resp.status == 200:
                             ctx.info("Image generated")
@@ -64,6 +65,8 @@ def generate_image(prompt: str, ctx: Context) -> Image | str:
                     time.sleep(1)
 
     if response_ready:
+        if output_mode is not None and output_mode.lower() == "url":
+            return file_url
         return Image(data=output_file, format="png")
     else:
         return "Failed to generate image. Please check server logs."
