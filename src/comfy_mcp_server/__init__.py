@@ -4,6 +4,9 @@ import urllib
 from urllib import request
 import time
 import os
+from langchain_ollama.chat_models import ChatOllama
+from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import StrOutputParser
 
 mcp = FastMCP("Comfy MCP Server")
 
@@ -21,9 +24,29 @@ prompt_node_id = os.environ.get("PROMPT_NODE_ID")
 output_node_id = os.environ.get("OUTPUT_NODE_ID")
 output_mode = os.environ.get("OUTPUT_MODE")
 
+ollama_api_base = os.environ.get("OLLAMA_API_BASE")
+prompt_llm = os.environ.get("PROMPT_LLM")
+
 
 def get_file_url(server: str, url_values: str) -> str:
     return f"{server}/view?{url_values}"
+
+
+if ollama_api_base is not None and prompt_llm is not None:
+    @mcp.tool()
+    def generate_prompt(topic: str, ctx: Context) -> str:
+        """Write an image generation prompt for a provided topic"""
+
+        model = ChatOllama(base_url=ollama_api_base, model=prompt_llm)
+        prompt = PromptTemplate.from_template("""You are an AI Image Generation Prompt Assistant.
+        Your job is to review the topic provided by the user for an image generation task and create
+        an appropriate prompt from it. Repond with a single prompt. Don't ask for feedback about the prompt. 
+
+        Topic: {topic}
+        Prompt: """)
+        chain = prompt | model | StrOutputParser()
+        response = chain.invoke({"topic": topic})
+        return response
 
 
 @mcp.tool()

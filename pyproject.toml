@@ -1,10 +1,12 @@
 [project]
 name = "comfy-mcp-server"
-version = "0.1.10"
+version = "0.1.11"
 description = "MCP Server for ComfyUI text to image Workflow"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "langchain>=0.3.19",
+    "langchain-ollama>=0.2.3",
     "mcp[cli]>=1.2.1",
 ]
 authors = [

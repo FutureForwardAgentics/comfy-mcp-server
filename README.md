@@ -27,6 +27,11 @@ Set the following environment variables:
 - `OUTPUT_NODE_ID` to the id of the output node with the final image.
 - `OUTPUT_MODE` to either `url` or `file` to select desired output.
 
+Optionally, if you have an [Ollama](https://ollama.com) server running, you can connect to it for prompt generation.
+
+- `OLLAMA_API_BASE` to the url where ollama is running.
+- `PROMPT_LLM` to the name of the model hosted on ollama for prompt generation.
+
 Example:
 
 ```bash
@@ -80,6 +85,10 @@ This function generates an image using a specified prompt. It follows these step
 4. Polls the server for the status of the prompt processing.
 5. Retrieves and returns the generated image once it's ready.
 
+### `generate_prompt(topic: str, ctx: Context) -> str`
+
+This function generates a comprehensive image generation prompt from specified topic.
+
 ## Dependencies
 
 - `mcp`: For setting up the FastMCP server.
@@ -87,6 +96,8 @@ This function generates an image using a specified prompt. It follows these step
 - `urllib`: For making HTTP requests.
 - `time`: For adding delays in polling.
 - `os`: For accessing environment variables.
+- `langchain`: For creating simple LLM Prompt chain to generate image generation prompt from topic.
+- `langchain-ollama`: For ollama specific modules for LangChain.
 
 ## License
 
