@@ -1,9 +1,9 @@
 from mcp.server.fastmcp import FastMCP, Image, Context
 import json
-import urllib
-from urllib import request
 import time
 import os
+import urllib.parse
+import urllib.request
 from langchain_ollama.chat_models import ChatOllama
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -20,7 +20,23 @@ prompt_template = json.load(
     open(workflow, "r")
 ) if workflow is not None else None
 
+# Backwards compatibility: PROMPT_NODE_ID takes precedence
 prompt_node_id = os.environ.get("PROMPT_NODE_ID")
+pos_prompt_node_id = os.environ.get("POS_PROMPT_NODE_ID")
+neg_prompt_node_id = os.environ.get("NEG_PROMPT_NODE_ID")
+
+# Apply backwards compatibility logic
+if prompt_node_id is not None:
+    # Legacy parameter present - use it for positive
+    pos_prompt_node_id = prompt_node_id
+elif pos_prompt_node_id is not None:
+    # New parameter present without legacy - copy to legacy variable
+    prompt_node_id = pos_prompt_node_id
+else:
+    # Neither present
+    prompt_node_id = None
+    pos_prompt_node_id = None
+
 output_node_id = os.environ.get("OUTPUT_NODE_ID")
 output_mode = os.environ.get("OUTPUT_MODE")
 
@@ -36,56 +52,73 @@ if ollama_api_base is not None and prompt_llm is not None:
     @mcp.tool()
     def generate_prompt(topic: str, ctx: Context) -> str:
         """Write an image generation prompt for a provided topic"""
-
         model = ChatOllama(base_url=ollama_api_base, model=prompt_llm)
-        prompt = PromptTemplate.from_template("""You are an AI Image Generation Prompt Assistant.
-        Your job is to review the topic provided by the user for an image generation task and create
-        an appropriate prompt from it. Repond with a single prompt. Don't ask for feedback about the prompt. 
+        prompt = PromptTemplate.from_template(
+            """You are an AI Image Generation Prompt Assistant.
+Your job is to review the topic provided by the user for an image generation task and create
+an appropriate prompt from it. Respond with a single prompt. Don't ask for feedback about the prompt.
 
-        Topic: {topic}
-        Prompt: """)
+Topic: {topic}
+Prompt: """
+        )
         chain = prompt | model | StrOutputParser()
         response = chain.invoke({"topic": topic})
         return response
 
 
 @mcp.tool()
-def generate_image(prompt: str, ctx: Context) -> Image | str:
-    """Generate an image using ComfyUI workflow"""
+def generate_image(
+    positive_prompt: str,
+    negative_prompt: str = "",
+    ctx: Context = None
+) -> Image | str:
+    """Generate an image using ComfyUI workflow
 
-    prompt_template[prompt_node_id]['inputs']['text'] = prompt
-    p = {"prompt": prompt_template}
-    data = json.dumps(p).encode('utf-8')
-    req = request.Request(f"{host}/prompt", data)
-    resp = request.urlopen(req)
+    Args:
+        positive_prompt: The positive prompt describing what to generate
+        negative_prompt: The negative prompt describing what to avoid (optional)
+        ctx: MCP context for logging
+    """
+    # Set positive prompt
+    prompt_template[pos_prompt_node_id]['inputs']['text'] = positive_prompt
+
+    # Set negative prompt if node is configured
+    if neg_prompt_node_id is not None and negative_prompt:
+        prompt_template[neg_prompt_node_id]['inputs']['text'] = negative_prompt
+
+    payload = {"prompt": prompt_template}
+    data = json.dumps(payload).encode('utf-8')
+    req = urllib.request.Request(f"{host}/prompt", data)
+    resp = urllib.request.urlopen(req)
+
     response_ready = False
     if resp.status == 200:
         ctx.info("Submitted prompt")
         resp_data = json.loads(resp.read())
         prompt_id = resp_data["prompt_id"]
 
-        for t in range(0, 20):
-            history_req = request.Request(
-                f"{host}/history/{prompt_id}")
-            history_resp = request.urlopen(history_req)
+        for _ in range(20):
+            history_req = urllib.request.Request(f"{host}/history/{prompt_id}")
+            history_resp = urllib.request.urlopen(history_req)
+
             if history_resp.status == 200:
                 ctx.info("Checking status...")
                 history_resp_data = json.loads(history_resp.read())
+
                 if prompt_id in history_resp_data:
-                    status = (
-                        history_resp_data[prompt_id]['status']['completed']
-                    )
+                    status = history_resp_data[prompt_id]['status']['completed']
+
                     if status:
                         output_data = (
-                            history_resp_data[prompt_id]
-                            ['outputs'][output_node_id]['images'][0]
+                            history_resp_data[prompt_id]['outputs'][output_node_id]['images'][0]
                         )
                         url_values = urllib.parse.urlencode(output_data)
                         file_url = get_file_url(host, url_values)
-                        override_file_url = get_file_url(
-                            override_host, url_values)
-                        file_req = request.Request(file_url)
-                        file_resp = request.urlopen(file_req)
+                        override_file_url = get_file_url(override_host, url_values)
+
+                        file_req = urllib.request.Request(file_url)
+                        file_resp = urllib.request.urlopen(file_req)
+
                         if file_resp.status == 200:
                             ctx.info("Image generated")
                             output_file = file_resp.read()
@@ -109,14 +142,15 @@ def run_server():
     if host is None:
         errors.append("- COMFY_URL environment variable not set")
     if workflow is None:
+        errors.append("- COMFY_WORKFLOW_JSON_FILE environment variable not set")
+    if pos_prompt_node_id is None:
         errors.append(
-            "- COMFY_WORKFLOW_JSON_FILE environment variable not set")
-    if prompt_node_id is None:
-        errors.append("- PROMPT_NODE_ID environment variable not set")
+            "- Either PROMPT_NODE_ID or POS_PROMPT_NODE_ID environment variable must be set"
+        )
     if output_node_id is None:
         errors.append("- OUTPUT_NODE_ID environment variable not set")
 
-    if len(errors) > 0:
+    if errors:
         errors = ["Failed to start Comfy MCP Server:"] + errors
         return "\n".join(errors)
     else:

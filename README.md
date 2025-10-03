@@ -25,9 +25,12 @@ Set the following environment variables:
 
 - `COMFY_URL` to point to your Comfy server URL.
 - `COMFY_WORKFLOW_JSON_FILE` to point to the absolute path of the API export json file for the comfyui workflow.
-- `PROMPT_NODE_ID` to the id of the text prompt node.
+- `POS_PROMPT_NODE_ID` to the id of the positive text prompt node (or use legacy `PROMPT_NODE_ID`).
+- `NEG_PROMPT_NODE_ID` to the id of the negative text prompt node (optional).
 - `OUTPUT_NODE_ID` to the id of the output node with the final image.
 - `OUTPUT_MODE` to either `url` or `file` to select desired output.
+
+**Note on backwards compatibility:** `PROMPT_NODE_ID` is still supported and takes precedence over `POS_PROMPT_NODE_ID`. If only `PROMPT_NODE_ID` is set, it will be used as the `POS_PROMPT_NODE_ID` variable.
 
 Optionally, if you have an [Ollama](https://ollama.com) server running, you can connect to it for prompt generation.
 
@@ -39,7 +42,8 @@ Example:
 ```bash
 export COMFY_URL=http://your-comfy-server-url:port
 export COMFY_WORKFLOW_JSON_FILE=/path/to/the/comfyui_workflow_export.json
-export PROMPT_NODE_ID=6 # use the correct node id here
+export POS_PROMPT_NODE_ID=6 # positive prompt node id
+export NEG_PROMPT_NODE_ID=7 # negative prompt node id (optional)
 export OUTPUT_NODE_ID=9 # use the correct node id here
 export OUTPUT_MODE=file
 ```
@@ -59,33 +63,38 @@ uvx comfy-mcp-server
   "mcpServers": {
     "Comfy MCP Server": {
       "command": "/path/to/uvx",
-      "args": [
-        "comfy-mcp-server"
-      ],
+      "args": ["comfy-mcp-server"],
       "env": {
         "COMFY_URL": "http://your-comfy-server-url:port",
         "COMFY_WORKFLOW_JSON_FILE": "/path/to/the/comfyui_workflow_export.json",
-        "PROMPT_NODE_ID": "6",
+        "POS_PROMPT_NODE_ID": "6",
+        "NEG_PROMPT_NODE_ID": "7",
         "OUTPUT_NODE_ID": "9",
-        "OUTPUT_MODE": "file",
+        "OUTPUT_MODE": "file"
       }
     }
   }
 }
-
 ```
 
 ## Functionality
 
-### `generate_image(prompt: str, ctx: Context) -> Image | str`
+### `generate_image(positive_prompt: str, negative_prompt: str = "", ctx: Context = None) -> Image | str`
 
-This function generates an image using a specified prompt. It follows these steps:
+This function generates an image using specified prompts. It follows these steps:
 
-1. Checks if all the environment variable are set.
+1. Checks if all the environment variables are set.
 2. Loads a prompt template from a JSON file.
-3. Submits the prompt to the Comfy server.
-4. Polls the server for the status of the prompt processing.
-5. Retrieves and returns the generated image once it's ready.
+3. Sets the positive prompt (and optionally the negative prompt) in the workflow.
+4. Submits the prompt to the Comfy server.
+5. Polls the server for the status of the prompt processing.
+6. Retrieves and returns the generated image once it's ready.
+
+**Parameters:**
+
+- `positive_prompt`: The positive prompt describing what to generate
+- `negative_prompt`: The negative prompt describing what to avoid (optional, default: "")
+- `ctx`: MCP context for logging
 
 ### `generate_prompt(topic: str, ctx: Context) -> str`
 
