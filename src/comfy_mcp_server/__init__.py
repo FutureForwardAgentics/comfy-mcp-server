@@ -16,9 +16,7 @@ if override_host is None:
     override_host = host
 workflow = os.environ.get("COMFY_WORKFLOW_JSON_FILE")
 
-prompt_template = json.load(
-    open(workflow, "r")
-) if workflow is not None else None
+prompt_template = json.load(open(workflow, "r")) if workflow is not None else None
 
 # Backwards compatibility: PROMPT_NODE_ID takes precedence
 prompt_node_id = os.environ.get("PROMPT_NODE_ID")
@@ -50,6 +48,7 @@ def get_file_url(server: str, url_values: str) -> str:
 
 
 if ollama_api_base is not None and prompt_llm is not None:
+
     @mcp.tool()
     def generate_prompt(topic: str, ctx: Context) -> str:
         """Write an image generation prompt for a provided topic"""
@@ -72,7 +71,7 @@ def generate_image(
     positive_prompt: str,
     negative_prompt: str = "",
     save_path: str = None,
-    ctx: Context = None
+    ctx: Context = None,
 ):
     """Generate an image using ComfyUI workflow
 
@@ -91,19 +90,21 @@ def generate_image(
 
     # Set positive prompt
     if pos_prompt_node_id in prompt_template:
-        prompt_template[pos_prompt_node_id]['inputs']['text'] = positive_prompt
+        prompt_template[pos_prompt_node_id]["inputs"]["text"] = positive_prompt
     else:
         return f"Error: Positive prompt node ID '{pos_prompt_node_id}' not found in workflow template"
 
     # Set negative prompt if node is configured and exists in template
     if neg_prompt_node_id is not None and negative_prompt:
         if neg_prompt_node_id in prompt_template:
-            prompt_template[neg_prompt_node_id]['inputs']['text'] = negative_prompt
+            prompt_template[neg_prompt_node_id]["inputs"]["text"] = negative_prompt
         else:
-            ctx.info(f"Warning: Negative prompt node ID '{neg_prompt_node_id}' not found in workflow, skipping negative prompt")
+            ctx.info(
+                f"Warning: Negative prompt node ID '{neg_prompt_node_id}' not found in workflow, skipping negative prompt"
+            )
 
     payload = {"prompt": prompt_template}
-    data = json.dumps(payload).encode('utf-8')
+    data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(f"{host}/prompt", data)
     resp = urllib.request.urlopen(req)
 
@@ -122,12 +123,12 @@ def generate_image(
                 history_resp_data = json.loads(history_resp.read())
 
                 if prompt_id in history_resp_data:
-                    status = history_resp_data[prompt_id]['status']['completed']
+                    status = history_resp_data[prompt_id]["status"]["completed"]
 
                     if status:
-                        output_data = (
-                            history_resp_data[prompt_id]['outputs'][output_node_id]['images'][0]
-                        )
+                        output_data = history_resp_data[prompt_id]["outputs"][
+                            output_node_id
+                        ]["images"][0]
                         url_values = urllib.parse.urlencode(output_data)
                         file_url = get_file_url(host, url_values)
                         override_file_url = get_file_url(override_host, url_values)
@@ -143,7 +144,7 @@ def generate_image(
                             os.makedirs(save_path, exist_ok=True)
                             filename = f"{prompt_id}.png"
                             full_path = os.path.join(save_path, filename)
-                            with open(full_path, 'wb') as f:
+                            with open(full_path, "wb") as f:
                                 f.write(output_file)
                             ctx.info(f"Image saved to {full_path}")
 
