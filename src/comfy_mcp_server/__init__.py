@@ -71,7 +71,7 @@ def generate_image(
     positive_prompt: str,
     negative_prompt: str = "",
     ctx: Context = None
-) -> Image | str:
+):
     """Generate an image using ComfyUI workflow
 
     Args:
@@ -80,11 +80,17 @@ def generate_image(
         ctx: MCP context for logging
     """
     # Set positive prompt
-    prompt_template[pos_prompt_node_id]['inputs']['text'] = positive_prompt
+    if pos_prompt_node_id in prompt_template:
+        prompt_template[pos_prompt_node_id]['inputs']['text'] = positive_prompt
+    else:
+        return f"Error: Positive prompt node ID '{pos_prompt_node_id}' not found in workflow template"
 
-    # Set negative prompt if node is configured
+    # Set negative prompt if node is configured and exists in template
     if neg_prompt_node_id is not None and negative_prompt:
-        prompt_template[neg_prompt_node_id]['inputs']['text'] = negative_prompt
+        if neg_prompt_node_id in prompt_template:
+            prompt_template[neg_prompt_node_id]['inputs']['text'] = negative_prompt
+        else:
+            ctx.info(f"Warning: Negative prompt node ID '{neg_prompt_node_id}' not found in workflow, skipping negative prompt")
 
     payload = {"prompt": prompt_template}
     data = json.dumps(payload).encode('utf-8')
