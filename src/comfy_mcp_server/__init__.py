@@ -2,6 +2,7 @@ from mcp.server.fastmcp import FastMCP, Image, Context
 import json
 import time
 import os
+import sys
 import urllib.parse
 import urllib.request
 from langchain_ollama.chat_models import ChatOllama
@@ -70,7 +71,7 @@ Prompt: """
 def generate_image(
     positive_prompt: str,
     negative_prompt: str = "",
-    save_path: str = "",
+    save_path: str | None = None,
     ctx: Context = None,
 ):
     """Generate an image using ComfyUI workflow
@@ -163,6 +164,43 @@ def generate_image(
         return "Failed to generate image. Please check server logs."
 
 
+def print_schema():
+    """Print the tool schemas for inspection"""
+    print("Comfy MCP Server - Available Tools\n")
+    print("=" * 80)
+
+    for tool in mcp._tool_manager._tools.values():
+        print(f"\nTool: {tool.name}")
+        print(f"Description: {tool.description}")
+        print("\nParameters:")
+
+        # Get parameters from the tool schema
+        properties = tool.parameters.get('properties', {})
+        required = tool.parameters.get('required', [])
+
+        for param_name, param_info in properties.items():
+            # Handle union types (anyOf)
+            if 'anyOf' in param_info:
+                types = [t.get('type', 'unknown') for t in param_info['anyOf']]
+                param_type = ' | '.join(types)
+            else:
+                param_type = param_info.get('type', 'any')
+
+            is_required = param_name in required
+            default = param_info.get('default')
+
+            if is_required:
+                status = " (required)"
+            elif 'default' in param_info:
+                status = f" = {repr(default)}"
+            else:
+                status = " (optional)"
+
+            print(f"  • {param_name}: {param_type}{status}")
+
+        print("\n" + "-" * 80)
+
+
 def run_server():
     errors = []
     if host is None:
@@ -184,4 +222,7 @@ def run_server():
 
 
 if __name__ == "__main__":
-    run_server()
+    if len(sys.argv) > 1 and sys.argv[1] == "--schema":
+        print_schema()
+    else:
+        run_server()
