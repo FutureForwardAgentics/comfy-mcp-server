@@ -39,6 +39,7 @@ else:
 
 output_node_id = os.environ.get("OUTPUT_NODE_ID")
 output_mode = os.environ.get("OUTPUT_MODE")
+working_dir = os.environ.get("COMFY_WORKING_DIR")
 
 ollama_api_base = os.environ.get("OLLAMA_API_BASE")
 prompt_llm = os.environ.get("PROMPT_LLM")
@@ -70,7 +71,7 @@ Prompt: """
 def generate_image(
     positive_prompt: str,
     negative_prompt: str = "",
-    save_path: str = "./img/",
+    save_path: str = None,
     ctx: Context = None
 ):
     """Generate an image using ComfyUI workflow
@@ -78,9 +79,16 @@ def generate_image(
     Args:
         positive_prompt: The positive prompt describing what to generate
         negative_prompt: The negative prompt describing what to avoid (optional)
-        save_path: Directory to save generated images (default: ./img/)
+        save_path: Directory to save generated images (default: {COMFY_WORKING_DIR}/img/ or ./img/)
         ctx: MCP context for logging
     """
+    # Set default save path based on working directory
+    if save_path is None:
+        if working_dir:
+            save_path = os.path.join(working_dir, "img")
+        else:
+            save_path = "./img"
+
     # Set positive prompt
     if pos_prompt_node_id in prompt_template:
         prompt_template[pos_prompt_node_id]['inputs']['text'] = positive_prompt
