@@ -129,7 +129,7 @@ def generate_image(
                             ctx.info("Image generated")
                             output_file = file_resp.read()
                             response_ready = True
-                        break
+                            break
                     else:
                         time.sleep(1)
                 else:
