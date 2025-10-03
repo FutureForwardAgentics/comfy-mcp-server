@@ -70,6 +70,7 @@ Prompt: """
 def generate_image(
     positive_prompt: str,
     negative_prompt: str = "",
+    save_path: str = "./img/",
     ctx: Context = None
 ):
     """Generate an image using ComfyUI workflow
@@ -77,6 +78,7 @@ def generate_image(
     Args:
         positive_prompt: The positive prompt describing what to generate
         negative_prompt: The negative prompt describing what to avoid (optional)
+        save_path: Directory to save generated images (default: ./img/)
         ctx: MCP context for logging
     """
     # Set positive prompt
@@ -128,6 +130,15 @@ def generate_image(
                         if file_resp.status == 200:
                             ctx.info("Image generated")
                             output_file = file_resp.read()
+
+                            # Save image to disk
+                            os.makedirs(save_path, exist_ok=True)
+                            filename = f"{prompt_id}.png"
+                            full_path = os.path.join(save_path, filename)
+                            with open(full_path, 'wb') as f:
+                                f.write(output_file)
+                            ctx.info(f"Image saved to {full_path}")
+
                             response_ready = True
                             break
                     else:
