@@ -70,7 +70,7 @@ Prompt: """
 def generate_image(
     positive_prompt: str,
     negative_prompt: str = "",
-    save_path: str | None = None,
+    save_path: str = "",
     ctx: Context = None,
 ):
     """Generate an image using ComfyUI workflow
@@ -82,7 +82,7 @@ def generate_image(
         ctx: MCP context for logging
     """
     # Set default save path based on working directory
-    if save_path is None:
+    if save_path == "":
         if working_dir:
             save_path = os.path.join(working_dir, "img")
         else:
