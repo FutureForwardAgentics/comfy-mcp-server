@@ -6,7 +6,7 @@
 
 ## Overview
 
-This script sets up a server using the FastMCP framework to generate images based on prompts using a specified workflow. It interacts with a remote Comfy server to submit prompts and retrieve generated images.
+This MCP server uses the FastMCP framework to generate images based on prompts using a specified workflow. It interacts with a remote ComfyUI server to submit prompts, retrieve generated images, and save them to disk.
 
 ## Prerequisites
 
@@ -29,6 +29,7 @@ Set the following environment variables:
 - `NEG_PROMPT_NODE_ID` to the id of the negative text prompt node (optional).
 - `OUTPUT_NODE_ID` to the id of the output node with the final image.
 - `OUTPUT_MODE` to either `url` or `file` to select desired output.
+- `COMFY_WORKING_DIR` to set the default directory for saving images (optional, defaults to current working directory).
 
 **Note on backwards compatibility:** `PROMPT_NODE_ID` is still supported and takes precedence over `POS_PROMPT_NODE_ID`. If only `PROMPT_NODE_ID` is set, it will be used as the `POS_PROMPT_NODE_ID` variable.
 
@@ -46,6 +47,7 @@ export POS_PROMPT_NODE_ID=6 # positive prompt node id
 export NEG_PROMPT_NODE_ID=7 # negative prompt node id (optional)
 export OUTPUT_NODE_ID=9 # use the correct node id here
 export OUTPUT_MODE=file
+export COMFY_WORKING_DIR=/path/to/your/working/directory # optional, defaults to current directory
 ```
 
 ## Usage
@@ -57,6 +59,8 @@ uvx comfy-mcp-server
 ```
 
 ### Example Claude Desktop Config
+
+For published package from PyPI:
 
 ```json
 {
@@ -70,7 +74,30 @@ uvx comfy-mcp-server
         "POS_PROMPT_NODE_ID": "6",
         "NEG_PROMPT_NODE_ID": "7",
         "OUTPUT_NODE_ID": "9",
-        "OUTPUT_MODE": "file"
+        "OUTPUT_MODE": "file",
+        "COMFY_WORKING_DIR": "/path/to/your/working/directory"
+      }
+    }
+  }
+}
+```
+
+For local development version:
+
+```json
+{
+  "mcpServers": {
+    "Comfy MCP Server": {
+      "command": "/path/to/uvx",
+      "args": ["--from", "/path/to/comfy-mcp-server", "comfy-mcp-server"],
+      "env": {
+        "COMFY_URL": "http://your-comfy-server-url:port",
+        "COMFY_WORKFLOW_JSON_FILE": "/path/to/the/comfyui_workflow_export.json",
+        "POS_PROMPT_NODE_ID": "6",
+        "NEG_PROMPT_NODE_ID": "7",
+        "OUTPUT_NODE_ID": "9",
+        "OUTPUT_MODE": "file",
+        "COMFY_WORKING_DIR": "/path/to/your/working/directory"
       }
     }
   }
@@ -79,7 +106,7 @@ uvx comfy-mcp-server
 
 ## Functionality
 
-### `generate_image(positive_prompt: str, negative_prompt: str = "", ctx: Context = None) -> Image | str`
+### `generate_image(positive_prompt: str, negative_prompt: str = "", save_path: str = None, ctx: Context = None) -> Image | str`
 
 This function generates an image using specified prompts. It follows these steps:
 
@@ -88,12 +115,15 @@ This function generates an image using specified prompts. It follows these steps
 3. Sets the positive prompt (and optionally the negative prompt) in the workflow.
 4. Submits the prompt to the Comfy server.
 5. Polls the server for the status of the prompt processing.
-6. Retrieves and returns the generated image once it's ready.
+6. Retrieves the generated image once it's ready.
+7. Saves the image to disk at the specified location.
+8. Returns the generated image.
 
 **Parameters:**
 
 - `positive_prompt`: The positive prompt describing what to generate
 - `negative_prompt`: The negative prompt describing what to avoid (optional, default: "")
+- `save_path`: Directory to save generated images (optional, default: `{COMFY_WORKING_DIR}/img/` or `./img/`)
 - `ctx`: MCP context for logging
 
 ### `generate_prompt(topic: str, ctx: Context) -> str`
