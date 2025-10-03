@@ -71,7 +71,7 @@ def generate_image(
     positive_prompt: str,
     negative_prompt: str = "",
     ctx: Context = None
-) -> Image | str:
+):
     """Generate an image using ComfyUI workflow
 
     Args:
