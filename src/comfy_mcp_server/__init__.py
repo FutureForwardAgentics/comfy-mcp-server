@@ -79,7 +79,74 @@ prompt_llm = os.environ.get("PROMPT_LLM")
 
 
 def get_file_url(server: str, url_values: str) -> str:
+    """Construct ComfyUI file view URL from server and URL-encoded parameters"""
     return f"{server}/view?{url_values}"
+
+
+def submit_workflow(workflow: dict, ctx: Context) -> str:
+    """Submit workflow to ComfyUI and return prompt_id"""
+    payload = {"prompt": workflow}
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(f"{host}/prompt", data)
+    resp = urllib.request.urlopen(req)
+
+    if resp.status != 200:
+        return None
+
+    ctx.info("Submitted prompt")
+    resp_data = json.loads(resp.read())
+    return resp_data.get("prompt_id")
+
+
+def poll_for_completion(prompt_id: str, ctx: Context, max_attempts: int = 20) -> dict | None:
+    """Poll ComfyUI history API until workflow completes or times out"""
+    for _ in range(max_attempts):
+        history_req = urllib.request.Request(f"{host}/history/{prompt_id}")
+        history_resp = urllib.request.urlopen(history_req)
+
+        if history_resp.status == 200:
+            ctx.info("Checking status...")
+            history_data = json.loads(history_resp.read())
+
+            if prompt_id in history_data:
+                if history_data[prompt_id]["status"]["completed"]:
+                    return history_data[prompt_id]
+
+        time.sleep(1)
+
+    return None
+
+
+def download_and_save_image(output_data: dict, save_path: str, ctx: Context) -> tuple[bytes, str]:
+    """Download generated image from ComfyUI and save to disk
+
+    Returns:
+        tuple: (image_bytes, full_path)
+    """
+    actual_filename = output_data.get("filename")
+    if not actual_filename:
+        raise ValueError("No filename in ComfyUI output")
+
+    url_values = urllib.parse.urlencode(output_data)
+    file_url = get_file_url(host, url_values)
+
+    file_req = urllib.request.Request(file_url)
+    file_resp = urllib.request.urlopen(file_req)
+
+    if file_resp.status != 200:
+        raise RuntimeError(f"Failed to download image: HTTP {file_resp.status}")
+
+    ctx.info("Image generated")
+    image_bytes = file_resp.read()
+
+    # Save to disk
+    os.makedirs(save_path, exist_ok=True)
+    full_path = os.path.join(save_path, actual_filename)
+    with open(full_path, "wb") as f:
+        f.write(image_bytes)
+    ctx.info(f"Image saved to {full_path}")
+
+    return image_bytes, full_path
 
 
 if ollama_api_base is not None and prompt_llm is not None:
@@ -138,64 +205,34 @@ def generate_image(
                 f"Warning: Negative prompt node ID '{neg_prompt_node_id}' not found in workflow, skipping negative prompt"
             )
 
-    payload = {"prompt": prompt_template}
-    data = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(f"{host}/prompt", data)
-    resp = urllib.request.urlopen(req)
+    # Submit workflow to ComfyUI
+    prompt_id = submit_workflow(prompt_template, ctx)
+    if not prompt_id:
+        return "Error: Failed to submit workflow to ComfyUI"
 
-    response_ready = False
-    if resp.status == 200:
-        ctx.info("Submitted prompt")
-        resp_data = json.loads(resp.read())
-        prompt_id = resp_data["prompt_id"]
-
-        for _ in range(20):
-            history_req = urllib.request.Request(f"{host}/history/{prompt_id}")
-            history_resp = urllib.request.urlopen(history_req)
-
-            if history_resp.status == 200:
-                ctx.info("Checking status...")
-                history_resp_data = json.loads(history_resp.read())
-
-                if prompt_id in history_resp_data:
-                    status = history_resp_data[prompt_id]["status"]["completed"]
-
-                    if status:
-                        output_data = history_resp_data[prompt_id]["outputs"][
-                            output_node_id
-                        ]["images"][0]
-                        url_values = urllib.parse.urlencode(output_data)
-                        file_url = get_file_url(host, url_values)
-                        override_file_url = get_file_url(override_host, url_values)
-
-                        file_req = urllib.request.Request(file_url)
-                        file_resp = urllib.request.urlopen(file_req)
-
-                        if file_resp.status == 200:
-                            ctx.info("Image generated")
-                            output_file = file_resp.read()
-
-                            # Save image to disk
-                            os.makedirs(save_path, exist_ok=True)
-                            filename = f"{prompt_id}.png"
-                            full_path = os.path.join(save_path, filename)
-                            with open(full_path, "wb") as f:
-                                f.write(output_file)
-                            ctx.info(f"Image saved to {full_path}")
-
-                            response_ready = True
-                            break
-                    else:
-                        time.sleep(1)
-                else:
-                    time.sleep(1)
-
-    if response_ready:
-        if output_mode is not None and output_mode.lower() == "url":
-            return override_file_url
-        return Image(data=output_file, format="png")
-    else:
+    # Poll for completion
+    result = poll_for_completion(prompt_id, ctx)
+    if not result:
         return "Failed to generate image. Please check server logs."
+
+    # Extract output data
+    try:
+        output_data = result["outputs"][output_node_id]["images"][0]
+    except (KeyError, IndexError) as e:
+        return f"Error: Invalid output structure from ComfyUI: {e}"
+
+    # Download and save image
+    try:
+        image_bytes, full_path = download_and_save_image(output_data, save_path, ctx)
+    except (ValueError, RuntimeError) as e:
+        return f"Error: {e}"
+
+    # Return result based on output mode
+    if output_mode is not None and output_mode.lower() == "url":
+        url_values = urllib.parse.urlencode(output_data)
+        return get_file_url(override_host, url_values)
+
+    return Image(data=image_bytes, format="png")
 
 
 def find_nodes_by_title(title: str, workflow_data: dict) -> list[str]:
