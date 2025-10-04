@@ -20,7 +20,9 @@ workflow = os.environ.get("COMFY_WORKFLOW_JSON_FILE")
 prompt_template = json.load(open(workflow, "r")) if workflow is not None else None
 
 
-def auto_discover_node_id(workflow_data: dict, title_keywords: list[str], class_type: str = None) -> str | None:
+def auto_discover_node_id(
+    workflow_data: dict, title_keywords: list[str], class_type: str = None
+) -> str | None:
     """Automatically discover a node ID by searching for keywords in title AND matching class_type"""
     if workflow_data is None:
         return None
@@ -45,9 +47,15 @@ def auto_discover_node_id(workflow_data: dict, title_keywords: list[str], class_
 
 
 # Try to auto-discover node IDs first, then fall back to environment variables
-pos_prompt_node_id = auto_discover_node_id(prompt_template, ["positive"], "CLIPTextEncode")
-neg_prompt_node_id = auto_discover_node_id(prompt_template, ["negative"], "CLIPTextEncode")
-output_node_id = auto_discover_node_id(prompt_template, ["save", "saveimage"], "SaveImage")
+pos_prompt_node_id = auto_discover_node_id(
+    prompt_template, ["positive"], "CLIPTextEncode"
+)
+neg_prompt_node_id = auto_discover_node_id(
+    prompt_template, ["negative"], "CLIPTextEncode"
+)
+output_node_id = auto_discover_node_id(
+    prompt_template, ["save", "saveimage"], "SaveImage"
+)
 
 # Override with environment variables if provided
 # Backwards compatibility: PROMPT_NODE_ID takes precedence
@@ -109,7 +117,7 @@ def generate_image(
         ctx: MCP context for logging
     """
     # Set default save path based on working directory
-    if save_path == "":
+    if save_path is None:
         if working_dir:
             save_path = os.path.join(working_dir, "img")
         else:
@@ -193,7 +201,8 @@ def generate_image(
 def find_nodes_by_title(title: str, workflow_data: dict) -> list[str]:
     """Find node IDs by their title in _meta"""
     return [
-        node_id for node_id, node in workflow_data.items()
+        node_id
+        for node_id, node in workflow_data.items()
         if node.get("_meta", {}).get("title") == title
     ]
 
@@ -201,7 +210,8 @@ def find_nodes_by_title(title: str, workflow_data: dict) -> list[str]:
 def find_nodes_by_class(class_type: str, workflow_data: dict) -> list[str]:
     """Find node IDs by their class_type"""
     return [
-        node_id for node_id, node in workflow_data.items()
+        node_id
+        for node_id, node in workflow_data.items()
         if node.get("class_type") == class_type
     ]
 
@@ -242,23 +252,23 @@ def print_schema():
         print("\nParameters:")
 
         # Get parameters from the tool schema
-        properties = tool.parameters.get('properties', {})
-        required = tool.parameters.get('required', [])
+        properties = tool.parameters.get("properties", {})
+        required = tool.parameters.get("required", [])
 
         for param_name, param_info in properties.items():
             # Handle union types (anyOf)
-            if 'anyOf' in param_info:
-                types = [t.get('type', 'unknown') for t in param_info['anyOf']]
-                param_type = ' | '.join(types)
+            if "anyOf" in param_info:
+                types = [t.get("type", "unknown") for t in param_info["anyOf"]]
+                param_type = " | ".join(types)
             else:
-                param_type = param_info.get('type', 'any')
+                param_type = param_info.get("type", "any")
 
             is_required = param_name in required
-            default = param_info.get('default')
+            default = param_info.get("default")
 
             if is_required:
                 status = " (required)"
-            elif 'default' in param_info:
+            elif "default" in param_info:
                 status = f" = {repr(default)}"
             else:
                 status = " (optional)"
@@ -279,7 +289,9 @@ def run_server():
             "- Could not auto-discover positive prompt node. Set POS_PROMPT_NODE_ID environment variable."
         )
     if output_node_id is None:
-        errors.append("- Could not auto-discover output node. Set OUTPUT_NODE_ID environment variable.")
+        errors.append(
+            "- Could not auto-discover output node. Set OUTPUT_NODE_ID environment variable."
+        )
 
     if errors:
         errors = ["Failed to start Comfy MCP Server:"] + errors
