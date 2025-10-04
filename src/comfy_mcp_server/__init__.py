@@ -19,24 +19,50 @@ workflow = os.environ.get("COMFY_WORKFLOW_JSON_FILE")
 
 prompt_template = json.load(open(workflow, "r")) if workflow is not None else None
 
+
+def auto_discover_node_id(workflow_data: dict, title_keywords: list[str], class_type: str = None) -> str | None:
+    """Automatically discover a node ID by searching for keywords in title AND matching class_type"""
+    if workflow_data is None:
+        return None
+
+    # First pass: Look for nodes with matching title keywords AND class_type
+    for node_id, node in workflow_data.items():
+        title = node.get("_meta", {}).get("title", "").lower()
+        node_class = node.get("class_type", "")
+
+        # If both title keyword and class_type match, this is our node
+        if title and any(keyword.lower() in title for keyword in title_keywords):
+            if class_type is None or node_class == class_type:
+                return node_id
+
+    # Second pass: If no title match, fall back to just class_type
+    if class_type:
+        for node_id, node in workflow_data.items():
+            if node.get("class_type") == class_type:
+                return node_id
+
+    return None
+
+
+# Try to auto-discover node IDs first, then fall back to environment variables
+pos_prompt_node_id = auto_discover_node_id(prompt_template, ["positive"], "CLIPTextEncode")
+neg_prompt_node_id = auto_discover_node_id(prompt_template, ["negative"], "CLIPTextEncode")
+output_node_id = auto_discover_node_id(prompt_template, ["save", "saveimage"], "SaveImage")
+
+# Override with environment variables if provided
 # Backwards compatibility: PROMPT_NODE_ID takes precedence
 prompt_node_id = os.environ.get("PROMPT_NODE_ID")
-pos_prompt_node_id = os.environ.get("POS_PROMPT_NODE_ID")
-neg_prompt_node_id = os.environ.get("NEG_PROMPT_NODE_ID")
-
-# Apply backwards compatibility logic
 if prompt_node_id is not None:
-    # Legacy parameter present - use it for positive
     pos_prompt_node_id = prompt_node_id
-elif pos_prompt_node_id is not None:
-    # New parameter present without legacy - copy to legacy variable
+elif os.environ.get("POS_PROMPT_NODE_ID") is not None:
+    pos_prompt_node_id = os.environ.get("POS_PROMPT_NODE_ID")
     prompt_node_id = pos_prompt_node_id
-else:
-    # Neither present
-    prompt_node_id = None
-    pos_prompt_node_id = None
 
-output_node_id = os.environ.get("OUTPUT_NODE_ID")
+if os.environ.get("NEG_PROMPT_NODE_ID") is not None:
+    neg_prompt_node_id = os.environ.get("NEG_PROMPT_NODE_ID")
+
+if os.environ.get("OUTPUT_NODE_ID") is not None:
+    output_node_id = os.environ.get("OUTPUT_NODE_ID")
 output_mode = os.environ.get("OUTPUT_MODE")
 working_dir = os.environ.get("COMFY_WORKING_DIR")
 
@@ -250,15 +276,23 @@ def run_server():
         errors.append("- COMFY_WORKFLOW_JSON_FILE environment variable not set")
     if pos_prompt_node_id is None:
         errors.append(
-            "- Either PROMPT_NODE_ID or POS_PROMPT_NODE_ID environment variable must be set"
+            "- Could not auto-discover positive prompt node. Set POS_PROMPT_NODE_ID environment variable."
         )
     if output_node_id is None:
-        errors.append("- OUTPUT_NODE_ID environment variable not set")
+        errors.append("- Could not auto-discover output node. Set OUTPUT_NODE_ID environment variable.")
 
     if errors:
         errors = ["Failed to start Comfy MCP Server:"] + errors
+        if prompt_template is not None:
+            errors.append("\nRun with --nodes to see available nodes in your workflow")
         return "\n".join(errors)
     else:
+        # Log discovered nodes when running in debug mode
+        if os.environ.get("DEBUG"):
+            print(f"Auto-discovered nodes:")
+            print(f"  Positive prompt: {pos_prompt_node_id}")
+            print(f"  Negative prompt: {neg_prompt_node_id or 'None'}")
+            print(f"  Output: {output_node_id}")
         mcp.run()
 
 
