@@ -164,6 +164,47 @@ def generate_image(
         return "Failed to generate image. Please check server logs."
 
 
+def find_nodes_by_title(title: str, workflow_data: dict) -> list[str]:
+    """Find node IDs by their title in _meta"""
+    return [
+        node_id for node_id, node in workflow_data.items()
+        if node.get("_meta", {}).get("title") == title
+    ]
+
+
+def find_nodes_by_class(class_type: str, workflow_data: dict) -> list[str]:
+    """Find node IDs by their class_type"""
+    return [
+        node_id for node_id, node in workflow_data.items()
+        if node.get("class_type") == class_type
+    ]
+
+
+def print_workflow_nodes():
+    """Print all nodes in the workflow with their IDs, titles, and class types"""
+    if prompt_template is None:
+        print("Error: COMFY_WORKFLOW_JSON_FILE not set or file not found")
+        return
+
+    print("Workflow Nodes\n")
+    print("=" * 80)
+    print(f"Workflow: {workflow}\n")
+
+    for node_id, node in prompt_template.items():
+        class_type = node.get("class_type", "Unknown")
+        title = node.get("_meta", {}).get("title", "")
+
+        title_str = f' ("{title}")' if title else ""
+        print(f"  [{node_id}] {class_type}{title_str}")
+
+    print("\n" + "-" * 80)
+    print("\nCommon node types to look for:")
+    print("  • Positive prompt: CLIPTextEncode with title 'Positive'")
+    print("  • Negative prompt: CLIPTextEncode with title 'Negative'")
+    print("  • Output: SaveImage")
+    print("\n" + "=" * 80)
+
+
 def print_schema():
     """Print the tool schemas for inspection"""
     print("Comfy MCP Server - Available Tools\n")
@@ -222,7 +263,20 @@ def run_server():
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "--schema":
-        print_schema()
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "--schema":
+            print_schema()
+        elif sys.argv[1] == "--nodes":
+            print_workflow_nodes()
+        elif sys.argv[1] == "--help":
+            print("Comfy MCP Server\n")
+            print("Usage:")
+            print("  comfy-mcp-server           Run the MCP server")
+            print("  comfy-mcp-server --schema  Show available tools and parameters")
+            print("  comfy-mcp-server --nodes   Show workflow nodes and their IDs")
+            print("  comfy-mcp-server --help    Show this help message")
+        else:
+            print(f"Unknown option: {sys.argv[1]}")
+            print("Use --help for usage information")
     else:
         run_server()
