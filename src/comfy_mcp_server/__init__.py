@@ -17,7 +17,65 @@ if override_host is None:
     override_host = host
 workflow = os.environ.get("COMFY_WORKFLOW_JSON_FILE")
 
-prompt_template = json.load(open(workflow, "r")) if workflow is not None else None
+def workflow_to_api_format(workflow_data: dict) -> dict:
+    """Convert workflow JSON to ComfyUI API prompt format
+
+    Converts from frontend format (with nodes array) to API format (dict of node_id -> node config)
+    """
+    if "nodes" not in workflow_data:
+        return workflow_data  # Already in API format
+
+    api_format = {}
+    for node in workflow_data["nodes"]:
+        node_id = str(node["id"])
+        inputs = {}
+
+        # Map widget values to input names
+        if "widgets_values" in node:
+            # Find widget inputs
+            widget_idx = 0
+            for inp in node.get("inputs", []):
+                if "widget" in inp:
+                    # Widget input - use value from widgets_values
+                    if widget_idx < len(node["widgets_values"]):
+                        inputs[inp["name"]] = node["widgets_values"][widget_idx]
+                        widget_idx += 1
+                elif inp.get("link") is not None:
+                    # Linked input - reference another node's output
+                    # Find the link to get source info
+                    for link in workflow_data.get("links", []):
+                        if link[0] == inp["link"]:
+                            source_node_id = str(link[1])
+                            source_output_idx = link[2]
+                            inputs[inp["name"]] = [source_node_id, source_output_idx]
+                            break
+
+        api_format[node_id] = {
+            "class_type": node["type"],
+            "inputs": inputs
+        }
+
+    return api_format
+
+
+workflow_data, nodes_lookup = None, None
+api_workflow = None
+
+if workflow is not None:
+    with open(workflow, "r") as f:
+        workflow_data = json.load(f)
+
+    # Create lookup dict for node access
+    if "nodes" in workflow_data:
+        nodes_lookup = {}
+        for node in workflow_data["nodes"]:
+            node_id = str(node["id"])
+            nodes_lookup[node_id] = node
+
+    # Convert to API format for submission
+    api_workflow = workflow_to_api_format(workflow_data)
+
+prompt_template = api_workflow  # For use in generate_image
 
 
 def auto_discover_node_id(
@@ -27,10 +85,14 @@ def auto_discover_node_id(
     if workflow_data is None:
         return None
 
+    # Extract nodes array from workflow structure
+    nodes = workflow_data.get("nodes", [])
+
     # First pass: Look for nodes with matching title keywords AND class_type
-    for node_id, node in workflow_data.items():
-        title = node.get("_meta", {}).get("title", "").lower()
-        node_class = node.get("class_type", "")
+    for node in nodes:
+        node_id = str(node.get("id"))
+        title = node.get("title", "").lower()
+        node_class = node.get("type", "")
 
         # If both title keyword and class_type match, this is our node
         if title and any(keyword.lower() in title for keyword in title_keywords):
@@ -39,8 +101,10 @@ def auto_discover_node_id(
 
     # Second pass: If no title match, fall back to just class_type
     if class_type:
-        for node_id, node in workflow_data.items():
-            if node.get("class_type") == class_type:
+        for node in nodes:
+            node_id = str(node.get("id"))
+            node_class = node.get("type", "")
+            if node_class == class_type:
                 return node_id
 
     return None
@@ -48,13 +112,13 @@ def auto_discover_node_id(
 
 # Try to auto-discover node IDs first, then fall back to environment variables
 pos_prompt_node_id = auto_discover_node_id(
-    prompt_template, ["positive"], "CLIPTextEncode"
+    workflow_data, ["positive"], "CLIPTextEncode"
 )
 neg_prompt_node_id = auto_discover_node_id(
-    prompt_template, ["negative"], "CLIPTextEncode"
+    workflow_data, ["negative"], "CLIPTextEncode"
 )
 output_node_id = auto_discover_node_id(
-    prompt_template, ["save", "saveimage"], "SaveImage"
+    workflow_data, ["save", "saveimage"], "SaveImage"
 )
 
 # Override with environment variables if provided
@@ -235,27 +299,31 @@ def generate_image(
     return Image(data=image_bytes, format="png")
 
 
-def find_nodes_by_title(title: str, workflow_data: dict) -> list[str]:
-    """Find node IDs by their title in _meta"""
+def find_nodes_by_title(title: str, wf_data: dict) -> list[str]:
+    """Find node IDs by their title"""
+    if "nodes" not in wf_data:
+        return []
     return [
-        node_id
-        for node_id, node in workflow_data.items()
-        if node.get("_meta", {}).get("title") == title
+        str(node["id"])
+        for node in wf_data["nodes"]
+        if node.get("title") == title
     ]
 
 
-def find_nodes_by_class(class_type: str, workflow_data: dict) -> list[str]:
+def find_nodes_by_class(class_type: str, wf_data: dict) -> list[str]:
     """Find node IDs by their class_type"""
+    if "nodes" not in wf_data:
+        return []
     return [
-        node_id
-        for node_id, node in workflow_data.items()
-        if node.get("class_type") == class_type
+        str(node["id"])
+        for node in wf_data["nodes"]
+        if node.get("type") == class_type
     ]
 
 
 def print_workflow_nodes():
     """Print all nodes in the workflow with their IDs, titles, and class types"""
-    if prompt_template is None:
+    if workflow_data is None:
         print("Error: COMFY_WORKFLOW_JSON_FILE not set or file not found")
         return
 
@@ -263,9 +331,11 @@ def print_workflow_nodes():
     print("=" * 80)
     print(f"Workflow: {workflow}\n")
 
-    for node_id, node in prompt_template.items():
-        class_type = node.get("class_type", "Unknown")
-        title = node.get("_meta", {}).get("title", "")
+    nodes = workflow_data.get("nodes", [])
+    for node in nodes:
+        node_id = node.get("id")
+        class_type = node.get("type", "Unknown")
+        title = node.get("title", "")
 
         title_str = f' ("{title}")' if title else ""
         print(f"  [{node_id}] {class_type}{title_str}")
