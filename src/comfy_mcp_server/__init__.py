@@ -17,7 +17,65 @@ if override_host is None:
     override_host = host
 workflow = os.environ.get("COMFY_WORKFLOW_JSON_FILE")
 
-prompt_template = json.load(open(workflow, "r")) if workflow is not None else None
+def workflow_to_api_format(workflow_data: dict) -> dict:
+    """Convert workflow JSON to ComfyUI API prompt format
+
+    Converts from frontend format (with nodes array) to API format (dict of node_id -> node config)
+    """
+    if "nodes" not in workflow_data:
+        return workflow_data  # Already in API format
+
+    api_format = {}
+    for node in workflow_data["nodes"]:
+        node_id = str(node["id"])
+        inputs = {}
+
+        # Map widget values to input names
+        if "widgets_values" in node:
+            # Find widget inputs
+            widget_idx = 0
+            for inp in node.get("inputs", []):
+                if "widget" in inp:
+                    # Widget input - use value from widgets_values
+                    if widget_idx < len(node["widgets_values"]):
+                        inputs[inp["name"]] = node["widgets_values"][widget_idx]
+                        widget_idx += 1
+                elif inp.get("link") is not None:
+                    # Linked input - reference another node's output
+                    # Find the link to get source info
+                    for link in workflow_data.get("links", []):
+                        if link[0] == inp["link"]:
+                            source_node_id = str(link[1])
+                            source_output_idx = link[2]
+                            inputs[inp["name"]] = [source_node_id, source_output_idx]
+                            break
+
+        api_format[node_id] = {
+            "class_type": node["type"],
+            "inputs": inputs
+        }
+
+    return api_format
+
+
+workflow_data, nodes_lookup = None, None
+api_workflow = None
+
+if workflow is not None:
+    with open(workflow, "r") as f:
+        workflow_data = json.load(f)
+
+    # Create lookup dict for node access
+    if "nodes" in workflow_data:
+        nodes_lookup = {}
+        for node in workflow_data["nodes"]:
+            node_id = str(node["id"])
+            nodes_lookup[node_id] = node
+
+    # Convert to API format for submission
+    api_workflow = workflow_to_api_format(workflow_data)
+
+prompt_template = api_workflow  # For use in generate_image
 
 
 def auto_discover_node_id(
@@ -27,10 +85,14 @@ def auto_discover_node_id(
     if workflow_data is None:
         return None
 
+    # Extract nodes array from workflow structure
+    nodes = workflow_data.get("nodes", [])
+
     # First pass: Look for nodes with matching title keywords AND class_type
-    for node_id, node in workflow_data.items():
-        title = node.get("_meta", {}).get("title", "").lower()
-        node_class = node.get("class_type", "")
+    for node in nodes:
+        node_id = str(node.get("id"))
+        title = node.get("title", "").lower()
+        node_class = node.get("type", "")
 
         # If both title keyword and class_type match, this is our node
         if title and any(keyword.lower() in title for keyword in title_keywords):
@@ -39,8 +101,10 @@ def auto_discover_node_id(
 
     # Second pass: If no title match, fall back to just class_type
     if class_type:
-        for node_id, node in workflow_data.items():
-            if node.get("class_type") == class_type:
+        for node in nodes:
+            node_id = str(node.get("id"))
+            node_class = node.get("type", "")
+            if node_class == class_type:
                 return node_id
 
     return None
@@ -48,13 +112,13 @@ def auto_discover_node_id(
 
 # Try to auto-discover node IDs first, then fall back to environment variables
 pos_prompt_node_id = auto_discover_node_id(
-    prompt_template, ["positive"], "CLIPTextEncode"
+    workflow_data, ["positive"], "CLIPTextEncode"
 )
 neg_prompt_node_id = auto_discover_node_id(
-    prompt_template, ["negative"], "CLIPTextEncode"
+    workflow_data, ["negative"], "CLIPTextEncode"
 )
 output_node_id = auto_discover_node_id(
-    prompt_template, ["save", "saveimage"], "SaveImage"
+    workflow_data, ["save", "saveimage"], "SaveImage"
 )
 
 # Override with environment variables if provided
@@ -79,7 +143,74 @@ prompt_llm = os.environ.get("PROMPT_LLM")
 
 
 def get_file_url(server: str, url_values: str) -> str:
+    """Construct ComfyUI file view URL from server and URL-encoded parameters"""
     return f"{server}/view?{url_values}"
+
+
+def submit_workflow(workflow: dict, ctx: Context) -> str:
+    """Submit workflow to ComfyUI and return prompt_id"""
+    payload = {"prompt": workflow}
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(f"{host}/prompt", data)
+    resp = urllib.request.urlopen(req)
+
+    if resp.status != 200:
+        return None
+
+    ctx.info("Submitted prompt")
+    resp_data = json.loads(resp.read())
+    return resp_data.get("prompt_id")
+
+
+def poll_for_completion(prompt_id: str, ctx: Context, max_attempts: int = 20) -> dict | None:
+    """Poll ComfyUI history API until workflow completes or times out"""
+    for _ in range(max_attempts):
+        history_req = urllib.request.Request(f"{host}/history/{prompt_id}")
+        history_resp = urllib.request.urlopen(history_req)
+
+        if history_resp.status == 200:
+            ctx.info("Checking status...")
+            history_data = json.loads(history_resp.read())
+
+            if prompt_id in history_data:
+                if history_data[prompt_id]["status"]["completed"]:
+                    return history_data[prompt_id]
+
+        time.sleep(1)
+
+    return None
+
+
+def download_and_save_image(output_data: dict, save_path: str, ctx: Context) -> tuple[bytes, str]:
+    """Download generated image from ComfyUI and save to disk
+
+    Returns:
+        tuple: (image_bytes, full_path)
+    """
+    actual_filename = output_data.get("filename")
+    if not actual_filename:
+        raise ValueError("No filename in ComfyUI output")
+
+    url_values = urllib.parse.urlencode(output_data)
+    file_url = get_file_url(host, url_values)
+
+    file_req = urllib.request.Request(file_url)
+    file_resp = urllib.request.urlopen(file_req)
+
+    if file_resp.status != 200:
+        raise RuntimeError(f"Failed to download image: HTTP {file_resp.status}")
+
+    ctx.info("Image generated")
+    image_bytes = file_resp.read()
+
+    # Save to disk
+    os.makedirs(save_path, exist_ok=True)
+    full_path = os.path.join(save_path, actual_filename)
+    with open(full_path, "wb") as f:
+        f.write(image_bytes)
+    ctx.info(f"Image saved to {full_path}")
+
+    return image_bytes, full_path
 
 
 if ollama_api_base is not None and prompt_llm is not None:
@@ -138,87 +269,61 @@ def generate_image(
                 f"Warning: Negative prompt node ID '{neg_prompt_node_id}' not found in workflow, skipping negative prompt"
             )
 
-    payload = {"prompt": prompt_template}
-    data = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(f"{host}/prompt", data)
-    resp = urllib.request.urlopen(req)
+    # Submit workflow to ComfyUI
+    prompt_id = submit_workflow(prompt_template, ctx)
+    if not prompt_id:
+        return "Error: Failed to submit workflow to ComfyUI"
 
-    response_ready = False
-    if resp.status == 200:
-        ctx.info("Submitted prompt")
-        resp_data = json.loads(resp.read())
-        prompt_id = resp_data["prompt_id"]
-
-        for _ in range(20):
-            history_req = urllib.request.Request(f"{host}/history/{prompt_id}")
-            history_resp = urllib.request.urlopen(history_req)
-
-            if history_resp.status == 200:
-                ctx.info("Checking status...")
-                history_resp_data = json.loads(history_resp.read())
-
-                if prompt_id in history_resp_data:
-                    status = history_resp_data[prompt_id]["status"]["completed"]
-
-                    if status:
-                        output_data = history_resp_data[prompt_id]["outputs"][
-                            output_node_id
-                        ]["images"][0]
-                        url_values = urllib.parse.urlencode(output_data)
-                        file_url = get_file_url(host, url_values)
-                        override_file_url = get_file_url(override_host, url_values)
-
-                        file_req = urllib.request.Request(file_url)
-                        file_resp = urllib.request.urlopen(file_req)
-
-                        if file_resp.status == 200:
-                            ctx.info("Image generated")
-                            output_file = file_resp.read()
-
-                            # Save image to disk
-                            os.makedirs(save_path, exist_ok=True)
-                            filename = f"{prompt_id}.png"
-                            full_path = os.path.join(save_path, filename)
-                            with open(full_path, "wb") as f:
-                                f.write(output_file)
-                            ctx.info(f"Image saved to {full_path}")
-
-                            response_ready = True
-                            break
-                    else:
-                        time.sleep(1)
-                else:
-                    time.sleep(1)
-
-    if response_ready:
-        if output_mode is not None and output_mode.lower() == "url":
-            return override_file_url
-        return Image(data=output_file, format="png")
-    else:
+    # Poll for completion
+    result = poll_for_completion(prompt_id, ctx)
+    if not result:
         return "Failed to generate image. Please check server logs."
 
+    # Extract output data
+    try:
+        output_data = result["outputs"][output_node_id]["images"][0]
+    except (KeyError, IndexError) as e:
+        return f"Error: Invalid output structure from ComfyUI: {e}"
 
-def find_nodes_by_title(title: str, workflow_data: dict) -> list[str]:
-    """Find node IDs by their title in _meta"""
+    # Download and save image
+    try:
+        image_bytes, full_path = download_and_save_image(output_data, save_path, ctx)
+    except (ValueError, RuntimeError) as e:
+        return f"Error: {e}"
+
+    # Return result based on output mode
+    if output_mode is not None and output_mode.lower() == "url":
+        url_values = urllib.parse.urlencode(output_data)
+        return get_file_url(override_host, url_values)
+
+    return Image(data=image_bytes, format="png")
+
+
+def find_nodes_by_title(title: str, wf_data: dict) -> list[str]:
+    """Find node IDs by their title"""
+    if "nodes" not in wf_data:
+        return []
     return [
-        node_id
-        for node_id, node in workflow_data.items()
-        if node.get("_meta", {}).get("title") == title
+        str(node["id"])
+        for node in wf_data["nodes"]
+        if node.get("title") == title
     ]
 
 
-def find_nodes_by_class(class_type: str, workflow_data: dict) -> list[str]:
+def find_nodes_by_class(class_type: str, wf_data: dict) -> list[str]:
     """Find node IDs by their class_type"""
+    if "nodes" not in wf_data:
+        return []
     return [
-        node_id
-        for node_id, node in workflow_data.items()
-        if node.get("class_type") == class_type
+        str(node["id"])
+        for node in wf_data["nodes"]
+        if node.get("type") == class_type
     ]
 
 
 def print_workflow_nodes():
     """Print all nodes in the workflow with their IDs, titles, and class types"""
-    if prompt_template is None:
+    if workflow_data is None:
         print("Error: COMFY_WORKFLOW_JSON_FILE not set or file not found")
         return
 
@@ -226,9 +331,11 @@ def print_workflow_nodes():
     print("=" * 80)
     print(f"Workflow: {workflow}\n")
 
-    for node_id, node in prompt_template.items():
-        class_type = node.get("class_type", "Unknown")
-        title = node.get("_meta", {}).get("title", "")
+    nodes = workflow_data.get("nodes", [])
+    for node in nodes:
+        node_id = node.get("id")
+        class_type = node.get("type", "Unknown")
+        title = node.get("title", "")
 
         title_str = f' ("{title}")' if title else ""
         print(f"  [{node_id}] {class_type}{title_str}")
