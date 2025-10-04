@@ -1,0 +1,187 @@
+{
+  "298": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "753",
+        0
+      ],
+      "vae": [
+        "710",
+        0
+      ]
+    }
+  },
+  "694": {
+    "class_type": "CFGGuider",
+    "inputs": {
+      "cfg": 3.5,
+      "model": [
+        "701",
+        0
+      ],
+      "positive": [
+        "693",
+        0
+      ],
+      "negative": [
+        "728",
+        0
+      ]
+    }
+  },
+  "700": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "euler"
+    }
+  },
+  "710": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "pixel_space"
+    }
+  },
+  "718": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": 425085246783295
+    },
+    "_meta": {
+      "title": "SEED"
+    }
+  },
+  "753": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "718",
+        0
+      ],
+      "guider": [
+        "694",
+        0
+      ],
+      "sampler": [
+        "700",
+        0
+      ],
+      "sigmas": [
+        "751",
+        0
+      ],
+      "latent_image": [
+        "760",
+        0
+      ]
+    }
+  },
+  "733": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "t5xxl_fp8_e4m3fn_scaled.safetensors",
+      "type": "chroma",
+      "device": "default"
+    }
+  },
+  "731": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "Chroma1-Radiance-v0.2.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "740": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "filename_prefix": "Chroma-Radiance",
+      "images": [
+        "298",
+        0
+      ]
+    }
+  },
+  "728": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "text, letters, words, numbers, realistic photos, messy, blurry",
+      "clip": [
+        "741",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Negative"
+    }
+  },
+  "693": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "Ornate playing card back design, Isaac Asimov Foundation universe aesthetic, psychohistory symbols, galactic empire motifs, geometric patterns with nested circles and star charts, deep space purple and gold color scheme, art deco sci-fi style, symmetrical mandala layout, mathematical equations subtly integrated, \"The Mule's Court\" elegant typography at center, high contrast, professional game card design, 4k resolution, sharp details",
+      "clip": [
+        "741",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Positive"
+    }
+  },
+  "760": {
+    "class_type": "EmptyChromaRadianceLatentImage",
+    "inputs": {
+      "width": 768,
+      "height": 1024,
+      "batch_size": 1
+    }
+  },
+  "741": {
+    "class_type": "T5TokenizerOptions",
+    "inputs": {
+      "min_padding": 1,
+      "min_length": 0,
+      "clip": [
+        "733",
+        0
+      ]
+    }
+  },
+  "747": {
+    "class_type": "ChromaRadianceOptions",
+    "inputs": {
+      "preserve_wrapper": true,
+      "start_sigma": 1,
+      "end_sigma": 0,
+      "nerf_tile_size": 16,
+      "model": [
+        "731",
+        0
+      ]
+    }
+  },
+  "751": {
+    "class_type": "BetaSamplingScheduler",
+    "inputs": {
+      "steps": 20,
+      "alpha": 0.4,
+      "beta": 0.4,
+      "model": [
+        "701",
+        0
+      ]
+    }
+  },
+  "701": {
+    "class_type": "ModelSamplingAuraFlow",
+    "inputs": {
+      "shift": 1,
+      "model": [
+        "747",
+        0
+      ]
+    },
+    "_meta": {
+      "title": "Flow Shift"
+    }
+  }
+}
