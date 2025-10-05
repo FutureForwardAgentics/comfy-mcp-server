@@ -1,8 +1,8 @@
 {
   "id": "00000000-0000-0000-0000-000000000000",
   "revision": 0,
-  "last_node_id": 763,
-  "last_link_id": 34,
+  "last_node_id": 767,
+  "last_link_id": 38,
   "nodes": [
     {
       "id": 298,
@@ -10,7 +10,7 @@
       "pos": [2068.887939453125, 130],
       "size": [140, 46],
       "flags": {},
-      "order": 14,
+      "order": 15,
       "mode": 0,
       "inputs": [
         {
@@ -26,7 +26,7 @@
           "localized_name": "IMAGE",
           "name": "IMAGE",
           "type": "IMAGE",
-          "links": [26]
+          "links": [35]
         }
       ],
       "properties": {
@@ -42,7 +42,7 @@
       "pos": [1396.3541259765625, 366],
       "size": [270, 98],
       "flags": {},
-      "order": 12,
+      "order": 13,
       "mode": 0,
       "inputs": [
         {
@@ -124,7 +124,7 @@
       "pos": [896.3541259765625, 130],
       "size": [270, 58],
       "flags": {},
-      "order": 8,
+      "order": 9,
       "mode": 0,
       "inputs": [
         {
@@ -215,48 +215,7 @@
         "ver": "0.3.62",
         "Node name for S&R": "RandomNoise"
       },
-      "widgets_values": [425085246783295, "randomize"]
-    },
-    {
-      "id": 728,
-      "type": "CLIPTextEncode",
-      "pos": [896.3541259765625, 648],
-      "size": [400, 200],
-      "flags": {},
-      "order": 10,
-      "mode": 0,
-      "inputs": [
-        {
-          "localized_name": "clip",
-          "name": "clip",
-          "type": "CLIP",
-          "link": 25
-        },
-        {
-          "localized_name": "text",
-          "name": "text",
-          "type": "STRING",
-          "widget": { "name": "text" },
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "localized_name": "CONDITIONING",
-          "name": "CONDITIONING",
-          "type": "CONDITIONING",
-          "links": [23]
-        }
-      ],
-      "title": "Negative",
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.3.62",
-        "Node name for S&R": "CLIPTextEncode"
-      },
-      "widgets_values": [
-        "text, letters, words, numbers, realistic photos, messy, blurry"
-      ]
+      "widgets_values": [914663036743014, "randomize"]
     },
     {
       "id": 731,
@@ -349,168 +308,12 @@
       ]
     },
     {
-      "id": 741,
-      "type": "T5TokenizerOptions",
-      "pos": [526.3541259765625, 390],
-      "size": [270, 82],
-      "flags": {},
-      "order": 7,
-      "mode": 0,
-      "inputs": [
-        {
-          "localized_name": "clip",
-          "name": "clip",
-          "type": "CLIP",
-          "link": 27
-        },
-        {
-          "localized_name": "min_padding",
-          "name": "min_padding",
-          "type": "INT",
-          "widget": { "name": "min_padding" },
-          "link": null
-        },
-        {
-          "localized_name": "min_length",
-          "name": "min_length",
-          "type": "INT",
-          "widget": { "name": "min_length" },
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "localized_name": "CLIP",
-          "name": "CLIP",
-          "type": "CLIP",
-          "links": [20, 25]
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.3.62",
-        "Node name for S&R": "T5TokenizerOptions"
-      },
-      "widgets_values": [1, 0]
-    },
-    {
-      "id": 747,
-      "type": "ChromaRadianceOptions",
-      "pos": [526.3541259765625, 130],
-      "size": [270, 130],
-      "flags": {},
-      "order": 6,
-      "mode": 0,
-      "inputs": [
-        {
-          "localized_name": "model",
-          "name": "model",
-          "type": "MODEL",
-          "link": 28
-        },
-        {
-          "localized_name": "preserve_wrapper",
-          "name": "preserve_wrapper",
-          "type": "BOOLEAN",
-          "widget": { "name": "preserve_wrapper" },
-          "link": null
-        },
-        {
-          "localized_name": "start_sigma",
-          "name": "start_sigma",
-          "type": "FLOAT",
-          "widget": { "name": "start_sigma" },
-          "link": null
-        },
-        {
-          "localized_name": "end_sigma",
-          "name": "end_sigma",
-          "type": "FLOAT",
-          "widget": { "name": "end_sigma" },
-          "link": null
-        },
-        {
-          "localized_name": "nerf_tile_size",
-          "name": "nerf_tile_size",
-          "type": "INT",
-          "widget": { "name": "nerf_tile_size" },
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "localized_name": "MODEL",
-          "name": "MODEL",
-          "type": "MODEL",
-          "links": [24]
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.3.62",
-        "Node name for S&R": "ChromaRadianceOptions"
-      },
-      "widgets_values": [true, 1, 0, 16]
-    },
-    {
-      "id": 751,
-      "type": "BetaSamplingScheduler",
-      "pos": [1396.3541259765625, 130],
-      "size": [270, 106],
-      "flags": {},
-      "order": 11,
-      "mode": 0,
-      "inputs": [
-        {
-          "localized_name": "model",
-          "name": "model",
-          "type": "MODEL",
-          "link": 29
-        },
-        {
-          "localized_name": "steps",
-          "name": "steps",
-          "type": "INT",
-          "widget": { "name": "steps" },
-          "link": null
-        },
-        {
-          "localized_name": "alpha",
-          "name": "alpha",
-          "type": "FLOAT",
-          "widget": { "name": "alpha" },
-          "link": null
-        },
-        {
-          "localized_name": "beta",
-          "name": "beta",
-          "type": "FLOAT",
-          "widget": { "name": "beta" },
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "localized_name": "SIGMAS",
-          "name": "SIGMAS",
-          "type": "SIGMAS",
-          "links": [33]
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.3.62",
-        "Node name for S&R": "BetaSamplingScheduler"
-      },
-      "widgets_values": [20, 0.4, 0.4]
-    },
-    {
       "id": 753,
       "type": "SamplerCustomAdvanced",
       "pos": [1766.3541259765625, 130],
-      "size": [202.53378295898438, 106],
+      "size": [202.53378295898438, 326],
       "flags": {},
-      "order": 13,
+      "order": 14,
       "mode": 0,
       "inputs": [
         {
@@ -566,47 +369,6 @@
       "widgets_values": []
     },
     {
-      "id": 693,
-      "type": "CLIPTextEncode",
-      "pos": [896.3541259765625, 318],
-      "size": [400, 200],
-      "flags": {},
-      "order": 9,
-      "mode": 0,
-      "inputs": [
-        {
-          "localized_name": "clip",
-          "name": "clip",
-          "type": "CLIP",
-          "link": 20
-        },
-        {
-          "localized_name": "text",
-          "name": "text",
-          "type": "STRING",
-          "widget": { "name": "text" },
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "localized_name": "CONDITIONING",
-          "name": "CONDITIONING",
-          "type": "CONDITIONING",
-          "links": [22]
-        }
-      ],
-      "title": "Positive",
-      "properties": {
-        "cnr_id": "comfy-core",
-        "ver": "0.3.62",
-        "Node name for S&R": "CLIPTextEncode"
-      },
-      "widgets_values": [
-        "Ornate playing card back design, Isaac Asimov Foundation universe aesthetic, psychohistory symbols, galactic empire motifs, geometric patterns with nested circles and star charts, deep space purple and gold color scheme, art deco sci-fi style, symmetrical mandala layout, mathematical equations subtly integrated, \"The Mule's Court\" elegant typography at center, high contrast, professional game card design, 4k resolution, sharp details"
-      ]
-    },
-    {
       "id": 760,
       "type": "EmptyChromaRadianceLatentImage",
       "pos": [100, 1166],
@@ -650,34 +412,479 @@
         "ver": "0.3.62",
         "Node name for S&R": "EmptyChromaRadianceLatentImage"
       },
-      "widgets_values": [304, 496, 1]
+      "widgets_values": [512, 720, 1]
     },
     {
-      "id": 740,
-      "type": "SaveImage",
-      "pos": [2308.887939453125, 130],
-      "size": [439.924072265625, 58],
+      "id": 693,
+      "type": "CLIPTextEncode",
+      "pos": [896.3541259765625, 318],
+      "size": [400, 200],
       "flags": {},
-      "order": 15,
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "clip",
+          "name": "clip",
+          "type": "CLIP",
+          "link": 20
+        },
+        {
+          "localized_name": "text",
+          "name": "text",
+          "type": "STRING",
+          "widget": { "name": "text" },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "CONDITIONING",
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [22]
+        }
+      ],
+      "title": "Positive",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.62",
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "Card front face layout template, three horizontal sections stacked vertically with visible dividing lines, top section narrow horizontal banner for title text, middle section large square zone for portrait image, bottom section large square zone for ability text, clear horizontal separator lines between each section, functional information card design, elegant dark border, gold accent trim, mystical deep purple background, Foundation sci-fi aesthetic, clean layout zones"
+      ]
+    },
+    {
+      "id": 741,
+      "type": "T5TokenizerOptions",
+      "pos": [526.3541259765625, 390],
+      "size": [270, 82],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "clip",
+          "name": "clip",
+          "type": "CLIP",
+          "link": 27
+        },
+        {
+          "localized_name": "min_padding",
+          "name": "min_padding",
+          "type": "INT",
+          "widget": { "name": "min_padding" },
+          "link": null
+        },
+        {
+          "localized_name": "min_length",
+          "name": "min_length",
+          "type": "INT",
+          "widget": { "name": "min_length" },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "CLIP",
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [20, 25]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.62",
+        "Node name for S&R": "T5TokenizerOptions"
+      },
+      "widgets_values": [0, 0]
+    },
+    {
+      "id": 747,
+      "type": "ChromaRadianceOptions",
+      "pos": [526.3541259765625, 130],
+      "size": [270, 130],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "model",
+          "name": "model",
+          "type": "MODEL",
+          "link": 28
+        },
+        {
+          "localized_name": "preserve_wrapper",
+          "name": "preserve_wrapper",
+          "type": "BOOLEAN",
+          "widget": { "name": "preserve_wrapper" },
+          "link": null
+        },
+        {
+          "localized_name": "start_sigma",
+          "name": "start_sigma",
+          "type": "FLOAT",
+          "widget": { "name": "start_sigma" },
+          "link": null
+        },
+        {
+          "localized_name": "end_sigma",
+          "name": "end_sigma",
+          "type": "FLOAT",
+          "widget": { "name": "end_sigma" },
+          "link": null
+        },
+        {
+          "localized_name": "nerf_tile_size",
+          "name": "nerf_tile_size",
+          "type": "INT",
+          "widget": { "name": "nerf_tile_size" },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "MODEL",
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [24]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.62",
+        "Node name for S&R": "ChromaRadianceOptions"
+      },
+      "widgets_values": [true, 1, 0, -1]
+    },
+    {
+      "id": 728,
+      "type": "CLIPTextEncode",
+      "pos": [896.3541259765625, 648],
+      "size": [400, 200],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "clip",
+          "name": "clip",
+          "type": "CLIP",
+          "link": 25
+        },
+        {
+          "localized_name": "text",
+          "name": "text",
+          "type": "STRING",
+          "widget": { "name": "text" },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "CONDITIONING",
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [23]
+        }
+      ],
+      "title": "Negative",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.62",
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "card back, single large area, decorative center, ornate middle, no divisions, no sections, filled portrait, faces, text, letters, cluttered patterns, symmetrical center design, medallion, circular frame, text"
+      ]
+    },
+    {
+      "id": 751,
+      "type": "BetaSamplingScheduler",
+      "pos": [1396.3541259765625, 130],
+      "size": [270, 106],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "model",
+          "name": "model",
+          "type": "MODEL",
+          "link": 29
+        },
+        {
+          "localized_name": "steps",
+          "name": "steps",
+          "type": "INT",
+          "widget": { "name": "steps" },
+          "link": null
+        },
+        {
+          "localized_name": "alpha",
+          "name": "alpha",
+          "type": "FLOAT",
+          "widget": { "name": "alpha" },
+          "link": null
+        },
+        {
+          "localized_name": "beta",
+          "name": "beta",
+          "type": "FLOAT",
+          "widget": { "name": "beta" },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "SIGMAS",
+          "name": "SIGMAS",
+          "type": "SIGMAS",
+          "links": [33]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.62",
+        "Node name for S&R": "BetaSamplingScheduler"
+      },
+      "widgets_values": [20, 0.4, 0.4]
+    },
+    {
+      "id": 766,
+      "type": "Text String",
+      "pos": [2044.3797607421875, 290.58770751953125],
+      "size": [270, 190],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "text",
+          "name": "text",
+          "type": "STRING",
+          "widget": { "name": "text" },
+          "link": null
+        },
+        {
+          "localized_name": "text_b",
+          "name": "text_b",
+          "shape": 7,
+          "type": "STRING",
+          "widget": { "name": "text_b" },
+          "link": null
+        },
+        {
+          "localized_name": "text_c",
+          "name": "text_c",
+          "shape": 7,
+          "type": "STRING",
+          "widget": { "name": "text_c" },
+          "link": null
+        },
+        {
+          "localized_name": "text_d",
+          "name": "text_d",
+          "shape": 7,
+          "type": "STRING",
+          "widget": { "name": "text_d" },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "TEXT",
+          "name": "TEXT",
+          "type": "STRING",
+          "links": [36]
+        },
+        {
+          "localized_name": "TEXT_B",
+          "name": "TEXT_B",
+          "type": "STRING",
+          "links": [37]
+        },
+        {
+          "localized_name": "TEXT_C",
+          "name": "TEXT_C",
+          "type": "STRING",
+          "links": [38]
+        },
+        {
+          "localized_name": "TEXT_D",
+          "name": "TEXT_D",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "title": "Save Path",
+      "properties": {
+        "cnr_id": "was-ns",
+        "ver": "3.0.1",
+        "Node name for S&R": "Text String"
+      },
+      "widgets_values": ["[time(%Y-%m-%d)]", "image", "_", ""]
+    },
+    {
+      "id": 765,
+      "type": "Image Save",
+      "pos": [2513.86083984375, 145.605712890625],
+      "size": [306.1015625, 626],
+      "flags": {},
+      "order": 16,
       "mode": 0,
       "inputs": [
         {
           "localized_name": "images",
           "name": "images",
           "type": "IMAGE",
-          "link": 26
+          "link": 35
+        },
+        {
+          "localized_name": "output_path",
+          "name": "output_path",
+          "type": "STRING",
+          "widget": { "name": "output_path" },
+          "link": 36
         },
         {
           "localized_name": "filename_prefix",
           "name": "filename_prefix",
           "type": "STRING",
           "widget": { "name": "filename_prefix" },
+          "link": 37
+        },
+        {
+          "localized_name": "filename_delimiter",
+          "name": "filename_delimiter",
+          "type": "STRING",
+          "widget": { "name": "filename_delimiter" },
+          "link": 38
+        },
+        {
+          "localized_name": "filename_number_padding",
+          "name": "filename_number_padding",
+          "type": "INT",
+          "widget": { "name": "filename_number_padding" },
+          "link": null
+        },
+        {
+          "localized_name": "filename_number_start",
+          "name": "filename_number_start",
+          "type": "COMBO",
+          "widget": { "name": "filename_number_start" },
+          "link": null
+        },
+        {
+          "localized_name": "extension",
+          "name": "extension",
+          "type": "COMBO",
+          "widget": { "name": "extension" },
+          "link": null
+        },
+        {
+          "localized_name": "dpi",
+          "name": "dpi",
+          "type": "INT",
+          "widget": { "name": "dpi" },
+          "link": null
+        },
+        {
+          "localized_name": "quality",
+          "name": "quality",
+          "type": "INT",
+          "widget": { "name": "quality" },
+          "link": null
+        },
+        {
+          "localized_name": "optimize_image",
+          "name": "optimize_image",
+          "type": "COMBO",
+          "widget": { "name": "optimize_image" },
+          "link": null
+        },
+        {
+          "localized_name": "lossless_webp",
+          "name": "lossless_webp",
+          "type": "COMBO",
+          "widget": { "name": "lossless_webp" },
+          "link": null
+        },
+        {
+          "localized_name": "overwrite_mode",
+          "name": "overwrite_mode",
+          "type": "COMBO",
+          "widget": { "name": "overwrite_mode" },
+          "link": null
+        },
+        {
+          "localized_name": "show_history",
+          "name": "show_history",
+          "type": "COMBO",
+          "widget": { "name": "show_history" },
+          "link": null
+        },
+        {
+          "localized_name": "show_history_by_prefix",
+          "name": "show_history_by_prefix",
+          "type": "COMBO",
+          "widget": { "name": "show_history_by_prefix" },
+          "link": null
+        },
+        {
+          "localized_name": "embed_workflow",
+          "name": "embed_workflow",
+          "type": "COMBO",
+          "widget": { "name": "embed_workflow" },
+          "link": null
+        },
+        {
+          "localized_name": "show_previews",
+          "name": "show_previews",
+          "type": "COMBO",
+          "widget": { "name": "show_previews" },
           "link": null
         }
       ],
-      "outputs": [],
-      "properties": { "cnr_id": "comfy-core", "ver": "0.3.62" },
-      "widgets_values": ["Chroma-Radiance-%date:yyyy.MM.dd-hh.mm.ss%"]
+      "outputs": [
+        {
+          "localized_name": "images",
+          "name": "images",
+          "type": "IMAGE",
+          "links": null
+        },
+        {
+          "localized_name": "files",
+          "name": "files",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "title": "Save Image",
+      "properties": {
+        "cnr_id": "was-ns",
+        "ver": "3.0.1",
+        "Node name for S&R": "Image Save"
+      },
+      "widgets_values": [
+        "[time(%Y-%m-%d)]",
+        "image",
+        "_",
+        4,
+        "false",
+        "png",
+        300,
+        100,
+        "true",
+        "false",
+        "false",
+        "false",
+        "true",
+        "true",
+        "true"
+      ]
     }
   ],
   "links": [
@@ -689,7 +896,6 @@
     [23, 728, 0, 694, 2, "CONDITIONING"],
     [24, 747, 0, 701, 0, "MODEL"],
     [25, 741, 0, 728, 0, "CLIP"],
-    [26, 298, 0, 740, 0, "IMAGE"],
     [27, 733, 0, 741, 0, "CLIP"],
     [28, 731, 0, 747, 0, "MODEL"],
     [29, 701, 0, 751, 0, "MODEL"],
@@ -697,14 +903,18 @@
     [31, 694, 0, 753, 1, "GUIDER"],
     [32, 700, 0, 753, 2, "SAMPLER"],
     [33, 751, 0, 753, 3, "SIGMAS"],
-    [34, 760, 0, 753, 4, "LATENT"]
+    [34, 760, 0, 753, 4, "LATENT"],
+    [35, 298, 0, 765, 0, "IMAGE"],
+    [36, 766, 0, 765, 1, "STRING"],
+    [37, 766, 1, 765, 2, "STRING"],
+    [38, 766, 2, 765, 3, "STRING"]
   ],
   "groups": [],
   "config": {},
   "extra": {
     "ds": {
-      "scale": 1.6102088574656337,
-      "offset": [-1931.2042965520443, 50.809322728494664]
+      "scale": 0.9004762847613969,
+      "offset": [-1448.6132050232643, 5.991352550166337]
     }
   },
   "version": 0.4

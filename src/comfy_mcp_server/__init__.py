@@ -116,8 +116,11 @@ pos_prompt_node_id = auto_discover_node_id(
 neg_prompt_node_id = auto_discover_node_id(
     workflow_data, ["negative"], "CLIPTextEncode"
 )
+filepath_node_id = auto_discover_node_id(
+    workflow_data, ["path", "savepath"], "Text String"
+)
 output_node_id = auto_discover_node_id(
-    workflow_data, ["save", "saveimage"], "SaveImage"
+    workflow_data, ["save", "saveimage"], "Image Save"
 )
 
 # Override with environment variables if provided
@@ -131,7 +134,8 @@ elif os.environ.get("POS_PROMPT_NODE_ID") is not None:
 
 if os.environ.get("NEG_PROMPT_NODE_ID") is not None:
     neg_prompt_node_id = os.environ.get("NEG_PROMPT_NODE_ID")
-
+if os.environ.get("FILEPATH_NODE_ID") is not None:
+    filepath_node_id = os.environ.get("FILEPATH_NODE_ID")
 if os.environ.get("OUTPUT_NODE_ID") is not None:
     output_node_id = os.environ.get("OUTPUT_NODE_ID")
 output_mode = os.environ.get("OUTPUT_MODE")
@@ -179,7 +183,7 @@ def poll_for_completion(
                 if history_data[prompt_id]["status"]["completed"]:
                     return history_data[prompt_id]
 
-        time.sleep(30)
+        time.sleep(5)
 
     return None
 
@@ -299,8 +303,8 @@ def generate_image(
     positive_prompt: str,
     negative_prompt: str = "",
     save_path: str | None = None,
-    ctx: Context = None,
-):
+    ctx: Context | None = None,
+) -> Image | str:
     """Generate an image using ComfyUI workflow
 
     Args:
@@ -339,7 +343,14 @@ def generate_image(
                 ctx.info(
                     f"Warning: Negative prompt node ID '{neg_prompt_node_id}' not found in workflow, skipping negative prompt"
                 )
-
+    if filepath_node_id is not None:
+        if filepath_node_id in prompt_template:
+            prompt_template[filepath_node_id]["inputs"]["text"] = save_path
+        else:
+            if ctx:
+                ctx.info(
+                    f"Warning: Filepath node ID '{filepath_node_id}' not found in workflow, skipping save path"
+                )
     # Submit workflow to ComfyUI (SaveImage will use its default output directory)
     prompt_id = submit_workflow(prompt_template, ctx)
     if not prompt_id:
