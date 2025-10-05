@@ -372,7 +372,7 @@ def generate_image(
     negative_prompt: str = "",
     save_path: str | None = None,
     ctx: Context | None = None,
-) -> Image | str:
+) -> str:
     """Generate an image using ComfyUI workflow
 
     Args:
@@ -443,12 +443,8 @@ def generate_image(
     except Exception as e:
         return f"Unexpected error during image save: {type(e).__name__}: {e}"
 
-    # Return result based on output mode
-    if output_mode is not None and output_mode.lower() == "url":
-        url_values = urllib.parse.urlencode(output_data)
-        return get_file_url(override_host, url_values)
-
-    return Image(data=image_bytes, format="png")
+    # Return the local file path
+    return full_path
 
 
 def find_nodes_by_title(title: str, wf_data: dict) -> list[str]:
