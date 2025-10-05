@@ -18,6 +18,7 @@ if override_host is None:
     override_host = host
 workflow = os.environ.get("COMFY_WORKFLOW_JSON_FILE")
 
+
 def workflow_to_api_format(workflow_data: dict) -> dict:
     """Convert workflow JSON to ComfyUI API prompt format
 
@@ -51,10 +52,7 @@ def workflow_to_api_format(workflow_data: dict) -> dict:
                             inputs[inp["name"]] = [source_node_id, source_output_idx]
                             break
 
-        api_format[node_id] = {
-            "class_type": node["type"],
-            "inputs": inputs
-        }
+        api_format[node_id] = {"class_type": node["type"], "inputs": inputs}
 
     return api_format
 
@@ -164,7 +162,9 @@ def submit_workflow(workflow: dict, ctx: Context) -> str:
     return resp_data.get("prompt_id")
 
 
-def poll_for_completion(prompt_id: str, ctx: Context, max_attempts: int = 20) -> dict | None:
+def poll_for_completion(
+    prompt_id: str, ctx: Context, max_attempts: int = 20
+) -> dict | None:
     """Poll ComfyUI history API until workflow completes or times out"""
     for _ in range(max_attempts):
         history_req = urllib.request.Request(f"{host}/history/{prompt_id}")
@@ -179,7 +179,7 @@ def poll_for_completion(prompt_id: str, ctx: Context, max_attempts: int = 20) ->
                 if history_data[prompt_id]["status"]["completed"]:
                     return history_data[prompt_id]
 
-        time.sleep(1)
+        time.sleep(30)
 
     return None
 
@@ -214,8 +214,10 @@ def find_latest_image_in_comfy_output(output_node_config: dict) -> str:
         raise ValueError(f"ComfyUI output directory not found: {search_dir}")
 
     image_files = [
-        os.path.join(search_dir, f) for f in os.listdir(search_dir)
-        if os.path.isfile(os.path.join(search_dir, f)) and f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))
+        os.path.join(search_dir, f)
+        for f in os.listdir(search_dir)
+        if os.path.isfile(os.path.join(search_dir, f))
+        and f.lower().endswith((".png", ".jpg", ".jpeg", ".webp"))
     ]
 
     if not image_files:
@@ -226,7 +228,9 @@ def find_latest_image_in_comfy_output(output_node_config: dict) -> str:
     return image_files[0]
 
 
-def download_and_save_image(output_data: dict, save_path: str, ctx: Context) -> tuple[bytes, str]:
+def download_and_save_image(
+    output_data: dict, save_path: str, ctx: Context
+) -> tuple[bytes, str]:
     """Download generated image from ComfyUI and save to local disk
 
     Args:
@@ -372,11 +376,7 @@ def find_nodes_by_title(title: str, wf_data: dict) -> list[str]:
     """Find node IDs by their title"""
     if "nodes" not in wf_data:
         return []
-    return [
-        str(node["id"])
-        for node in wf_data["nodes"]
-        if node.get("title") == title
-    ]
+    return [str(node["id"]) for node in wf_data["nodes"] if node.get("title") == title]
 
 
 def find_nodes_by_class(class_type: str, wf_data: dict) -> list[str]:
@@ -384,9 +384,7 @@ def find_nodes_by_class(class_type: str, wf_data: dict) -> list[str]:
     if "nodes" not in wf_data:
         return []
     return [
-        str(node["id"])
-        for node in wf_data["nodes"]
-        if node.get("type") == class_type
+        str(node["id"]) for node in wf_data["nodes"] if node.get("type") == class_type
     ]
 
 
