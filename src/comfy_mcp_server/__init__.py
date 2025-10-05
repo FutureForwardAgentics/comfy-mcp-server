@@ -167,7 +167,7 @@ def submit_workflow(workflow: dict, ctx: Context) -> str:
 
 
 def poll_for_completion(
-    prompt_id: str, ctx: Context, max_attempts: int = 20
+    prompt_id: str, ctx: Context, max_attempts: int = 60
 ) -> dict | None:
     """Poll ComfyUI history API until workflow completes or times out"""
     for _ in range(max_attempts):
@@ -229,7 +229,7 @@ def evaluate_time_tokens(path_str: str) -> str:
     import re
 
     # Find all [time(...)] patterns
-    pattern = r'\[time\(([^)]+)\)\]'
+    pattern = r"\[time\(([^)]+)\)\]"
 
     def replace_time(match):
         format_str = match.group(1)
@@ -269,7 +269,9 @@ def find_latest_image_in_comfy_output(output_node_config: dict) -> str:
     else:
         # Extract filename_prefix from SaveImage node to determine subdirectory
         # Example: "chroma-radiance/image" means search in chroma-radiance subdirectory
-        filename_prefix = output_node_config.get("inputs", {}).get("filename_prefix", "")
+        filename_prefix = output_node_config.get("inputs", {}).get(
+            "filename_prefix", ""
+        )
 
         # Parse the filename_prefix to extract directory path (before the last /)
         if "/" in filename_prefix:
