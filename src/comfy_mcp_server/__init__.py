@@ -312,6 +312,13 @@ def generate_image(
         else:
             save_path = "./img"
 
+    # Normalize path to handle trailing slashes
+    save_path = os.path.normpath(save_path)
+
+    # Debug logging
+    import sys
+    print(f"DEBUG: save_path={save_path}", file=sys.stderr)
+
     # Set positive prompt
     if pos_prompt_node_id in prompt_template:
         prompt_template[pos_prompt_node_id]["inputs"]["text"] = positive_prompt
@@ -348,7 +355,9 @@ def generate_image(
     try:
         image_bytes, full_path = download_and_save_image(output_data, save_path, ctx)
     except (ValueError, RuntimeError) as e:
-        return f"Error: {e}"
+        return f"Error downloading/saving image: {e}"
+    except Exception as e:
+        return f"Unexpected error during image save: {type(e).__name__}: {e}"
 
     # Return result based on output mode
     if output_mode is not None and output_mode.lower() == "url":
