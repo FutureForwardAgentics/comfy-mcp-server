@@ -317,6 +317,7 @@ def generate_image(
 
     # Debug logging
     import sys
+
     print(f"DEBUG: save_path={save_path}", file=sys.stderr)
 
     # Set positive prompt
