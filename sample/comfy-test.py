@@ -16,4 +16,9 @@ result = generate_image(
     save_path="/Volumes/Sidecar/FFAI/The Lands Between Time/the-mules-court/img/",
 )
 
-print(result)
+if hasattr(result, '__class__') and result.__class__.__name__ == 'Image':
+    print("✓ Image generated successfully")
+    print(f"  Format: {result.format if hasattr(result, 'format') else 'unknown'}")
+    print(f"  Size: {len(result.data) if hasattr(result, 'data') else 'unknown'} bytes")
+else:
+    print(f"Result: {result}")
