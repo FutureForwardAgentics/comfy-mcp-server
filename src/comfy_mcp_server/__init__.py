@@ -5,6 +5,7 @@ import os
 import sys
 import urllib.parse
 import urllib.request
+from datetime import datetime
 from langchain_ollama.chat_models import ChatOllama
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -16,6 +17,7 @@ override_host = os.environ.get("COMFY_URL_EXTERNAL")
 if override_host is None:
     override_host = host
 workflow = os.environ.get("COMFY_WORKFLOW_JSON_FILE")
+
 
 def workflow_to_api_format(workflow_data: dict) -> dict:
     """Convert workflow JSON to ComfyUI API prompt format
@@ -50,10 +52,7 @@ def workflow_to_api_format(workflow_data: dict) -> dict:
                             inputs[inp["name"]] = [source_node_id, source_output_idx]
                             break
 
-        api_format[node_id] = {
-            "class_type": node["type"],
-            "inputs": inputs
-        }
+        api_format[node_id] = {"class_type": node["type"], "inputs": inputs}
 
     return api_format
 
@@ -157,58 +156,121 @@ def submit_workflow(workflow: dict, ctx: Context) -> str:
     if resp.status != 200:
         return None
 
-    ctx.info("Submitted prompt")
+    if ctx:
+        ctx.info("Submitted prompt")
     resp_data = json.loads(resp.read())
     return resp_data.get("prompt_id")
 
 
-def poll_for_completion(prompt_id: str, ctx: Context, max_attempts: int = 20) -> dict | None:
+def poll_for_completion(
+    prompt_id: str, ctx: Context, max_attempts: int = 20
+) -> dict | None:
     """Poll ComfyUI history API until workflow completes or times out"""
     for _ in range(max_attempts):
         history_req = urllib.request.Request(f"{host}/history/{prompt_id}")
         history_resp = urllib.request.urlopen(history_req)
 
         if history_resp.status == 200:
-            ctx.info("Checking status...")
+            if ctx:
+                ctx.info("Checking status...")
             history_data = json.loads(history_resp.read())
 
             if prompt_id in history_data:
                 if history_data[prompt_id]["status"]["completed"]:
                     return history_data[prompt_id]
 
-        time.sleep(1)
+        time.sleep(30)
 
     return None
 
 
-def download_and_save_image(output_data: dict, save_path: str, ctx: Context) -> tuple[bytes, str]:
-    """Download generated image from ComfyUI and save to disk
+def find_latest_image_in_comfy_output(output_node_config: dict) -> str:
+    """Find the latest image file from ComfyUI output directory based on SaveImage node config
+
+    Args:
+        output_node_config: The SaveImage node configuration from the workflow
 
     Returns:
-        tuple: (image_bytes, full_path)
+        Full path to the most recently created image file
     """
-    actual_filename = output_data.get("filename")
-    if not actual_filename:
-        raise ValueError("No filename in ComfyUI output")
+    base_output_dir = "/Volumes/Sidecar/GenAI/ComfyUI/output"
 
-    url_values = urllib.parse.urlencode(output_data)
-    file_url = get_file_url(host, url_values)
+    # Extract filename_prefix from SaveImage node to determine subdirectory
+    # Example: "chroma-radiance/image" means search in chroma-radiance subdirectory
+    filename_prefix = output_node_config.get("inputs", {}).get("filename_prefix", "")
 
-    file_req = urllib.request.Request(file_url)
-    file_resp = urllib.request.urlopen(file_req)
+    # Parse the filename_prefix to extract directory path (before the last /)
+    if "/" in filename_prefix:
+        prefix_parts = filename_prefix.split("/")
+        # Remove the actual filename part (last element)
+        dir_parts = prefix_parts[:-1]
+        search_dir = os.path.join(base_output_dir, *dir_parts)
+    else:
+        # No subdirectories, just search base output directory
+        search_dir = base_output_dir
 
-    if file_resp.status != 200:
-        raise RuntimeError(f"Failed to download image: HTTP {file_resp.status}")
+    # Find image files in the determined directory
+    if not os.path.exists(search_dir):
+        raise ValueError(f"ComfyUI output directory not found: {search_dir}")
 
-    ctx.info("Image generated")
-    image_bytes = file_resp.read()
+    image_files = [
+        os.path.join(search_dir, f)
+        for f in os.listdir(search_dir)
+        if os.path.isfile(os.path.join(search_dir, f))
+        and f.lower().endswith((".png", ".jpg", ".jpeg", ".webp"))
+    ]
 
-    # Save to disk
+    if not image_files:
+        raise ValueError(f"No image files found in {search_dir}")
+
+    # Sort by creation time (most recent first)
+    image_files.sort(key=lambda f: os.path.getctime(f), reverse=True)
+    return image_files[0]
+
+
+def download_and_save_image(
+    output_data: dict, save_path: str, ctx: Context
+) -> tuple[bytes, str]:
+    """Download generated image from ComfyUI and save to local disk
+
+    Args:
+        output_data: Output data from ComfyUI history API containing filename and metadata
+        save_path: Absolute path to directory where image should be saved locally
+        ctx: MCP context for logging
+
+    Returns:
+        tuple: (image_bytes, full_path) where full_path is the local saved file path
+    """
+    # Get the SaveImage node configuration to determine output location
+    if output_node_id not in prompt_template:
+        raise ValueError(f"SaveImage node {output_node_id} not found in workflow")
+
+    output_node_config = prompt_template[output_node_id]
+
+    # Find the most recently created image file based on SaveImage config
+    source_path = find_latest_image_in_comfy_output(output_node_config)
+    if ctx:
+        ctx.info(f"Found latest image: {os.path.basename(source_path)}")
+
+    # Read the image
+    with open(source_path, "rb") as f:
+        image_bytes = f.read()
+
+    # Save to local disk with datetime-formatted filename
     os.makedirs(save_path, exist_ok=True)
-    full_path = os.path.join(save_path, actual_filename)
+
+    # Get file extension from source file
+    _, ext = os.path.splitext(source_path)
+
+    # Format: YYYY-mm-dd_HHMMSS.ext
+    timestamp_str = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    new_filename = f"{timestamp_str}{ext}"
+    full_path = os.path.join(save_path, new_filename)
+
     with open(full_path, "wb") as f:
         f.write(image_bytes)
-    ctx.info(f"Image saved to {full_path}")
+    if ctx:
+        ctx.info(f"Image saved locally to {full_path}")
 
     return image_bytes, full_path
 
@@ -244,15 +306,23 @@ def generate_image(
     Args:
         positive_prompt: The positive prompt describing what to generate
         negative_prompt: The negative prompt describing what to avoid (optional)
-        save_path: Directory to save generated images (default: {COMFY_WORKING_DIR}/img/ or ./img/)
+        save_path: Absolute path to directory where images should be saved locally (default: {COMFY_WORKING_DIR}/img/ or ./img/)
         ctx: MCP context for logging
     """
-    # Set default save path based on working directory
+    # Set default save path - use absolute path
     if save_path is None:
         if working_dir:
             save_path = os.path.join(working_dir, "img")
         else:
             save_path = "./img"
+
+    # Normalize path to handle trailing slashes
+    save_path = os.path.normpath(save_path)
+
+    # Debug logging
+    import sys
+
+    print(f"DEBUG: save_path={save_path}", file=sys.stderr)
 
     # Set positive prompt
     if pos_prompt_node_id in prompt_template:
@@ -265,11 +335,12 @@ def generate_image(
         if neg_prompt_node_id in prompt_template:
             prompt_template[neg_prompt_node_id]["inputs"]["text"] = negative_prompt
         else:
-            ctx.info(
-                f"Warning: Negative prompt node ID '{neg_prompt_node_id}' not found in workflow, skipping negative prompt"
-            )
+            if ctx:
+                ctx.info(
+                    f"Warning: Negative prompt node ID '{neg_prompt_node_id}' not found in workflow, skipping negative prompt"
+                )
 
-    # Submit workflow to ComfyUI
+    # Submit workflow to ComfyUI (SaveImage will use its default output directory)
     prompt_id = submit_workflow(prompt_template, ctx)
     if not prompt_id:
         return "Error: Failed to submit workflow to ComfyUI"
@@ -285,11 +356,13 @@ def generate_image(
     except (KeyError, IndexError) as e:
         return f"Error: Invalid output structure from ComfyUI: {e}"
 
-    # Download and save image
+    # Download from ComfyUI and save to local path
     try:
         image_bytes, full_path = download_and_save_image(output_data, save_path, ctx)
     except (ValueError, RuntimeError) as e:
-        return f"Error: {e}"
+        return f"Error downloading/saving image: {e}"
+    except Exception as e:
+        return f"Unexpected error during image save: {type(e).__name__}: {e}"
 
     # Return result based on output mode
     if output_mode is not None and output_mode.lower() == "url":
@@ -303,11 +376,7 @@ def find_nodes_by_title(title: str, wf_data: dict) -> list[str]:
     """Find node IDs by their title"""
     if "nodes" not in wf_data:
         return []
-    return [
-        str(node["id"])
-        for node in wf_data["nodes"]
-        if node.get("title") == title
-    ]
+    return [str(node["id"]) for node in wf_data["nodes"] if node.get("title") == title]
 
 
 def find_nodes_by_class(class_type: str, wf_data: dict) -> list[str]:
@@ -315,9 +384,7 @@ def find_nodes_by_class(class_type: str, wf_data: dict) -> list[str]:
     if "nodes" not in wf_data:
         return []
     return [
-        str(node["id"])
-        for node in wf_data["nodes"]
-        if node.get("type") == class_type
+        str(node["id"]) for node in wf_data["nodes"] if node.get("type") == class_type
     ]
 
 

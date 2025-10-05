@@ -1,0 +1,27 @@
+{
+  "mcpServers": {
+    "sequential-thinking": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "env": {}
+    },
+    "gitbutler": {
+      "type": "stdio",
+      "command": "but",
+      "args": ["mcp"],
+      "env": {}
+    },
+    "Comfy-MCP-Server": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["comfy-mcp-server"],
+      "env": {
+        "COMFY_URL": "http://127.0.0.1:8642",
+        "COMFY_WORKFLOW_JSON_FILE": "/Volumes/Sidecar/GenAI/ComfyUI/user/default/workflows/image_chroma1_radiance_text_to_image_api.json",
+        "OUTPUT_MODE": "file",
+        "COMFY_WORKING_DIR": ""
+      }
+    }
+  }
+}
