@@ -182,6 +182,69 @@ def poll_for_completion(prompt_id: str, ctx: Context, max_attempts: int = 20) ->
     return None
 
 
+def find_latest_image_in_comfy_output(output_node_config: dict) -> str:
+    """Find the latest image file from ComfyUI output directory based on SaveImage node config
+
+    Args:
+        output_node_config: The SaveImage node configuration from the workflow
+
+    Returns:
+        Full path to the most recently created image file
+    """
+    base_output_dir = "/Volumes/Sidecar/GenAI/ComfyUI/output"
+
+    # Extract filename_prefix from SaveImage node to determine subdirectory
+    filename_prefix = output_node_config.get("inputs", {}).get("filename_prefix", "")
+
+    # Parse the filename_prefix to extract directory path (before the last /)
+    # Example: "chroma-radiance/%date:dd-MM-yyyy%/image" -> check "chroma-radiance/*/"
+    if "/" in filename_prefix:
+        prefix_parts = filename_prefix.split("/")
+        # Remove the actual filename part (last element)
+        dir_parts = prefix_parts[:-1]
+
+        # Start with base directory and the first static part
+        search_dir = os.path.join(base_output_dir, dir_parts[0]) if dir_parts else base_output_dir
+
+        # If there are date format patterns in subdirectories, we need to search recursively
+        if any("%date:" in part for part in dir_parts):
+            # Search recursively from the known static directory
+            all_files = []
+            for root, dirs, files in os.walk(search_dir):
+                for f in files:
+                    if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
+                        all_files.append(os.path.join(root, f))
+
+            if not all_files:
+                raise ValueError(f"No image files found in {search_dir}")
+
+            # Sort by creation time (most recent first)
+            all_files.sort(key=lambda f: os.path.getctime(f), reverse=True)
+            return all_files[0]
+        else:
+            # No dynamic patterns, use the exact directory
+            search_dir = os.path.join(base_output_dir, *dir_parts)
+    else:
+        # No subdirectories, just search base output directory
+        search_dir = base_output_dir
+
+    # Find image files in the determined directory
+    if not os.path.exists(search_dir):
+        raise ValueError(f"ComfyUI output directory not found: {search_dir}")
+
+    image_files = [
+        os.path.join(search_dir, f) for f in os.listdir(search_dir)
+        if os.path.isfile(os.path.join(search_dir, f)) and f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))
+    ]
+
+    if not image_files:
+        raise ValueError(f"No image files found in {search_dir}")
+
+    # Sort by creation time (most recent first)
+    image_files.sort(key=lambda f: os.path.getctime(f), reverse=True)
+    return image_files[0]
+
+
 def download_and_save_image(output_data: dict, save_path: str, ctx: Context) -> tuple[bytes, str]:
     """Download generated image from ComfyUI and save to local disk
 
@@ -193,41 +256,25 @@ def download_and_save_image(output_data: dict, save_path: str, ctx: Context) -> 
     Returns:
         tuple: (image_bytes, full_path) where full_path is the local saved file path
     """
-    # Get ComfyUI output directory and find latest file
-    comfy_output_dir = output_data.get("subfolder", "")
-    if comfy_output_dir:
-        source_dir = os.path.join("/Volumes/Sidecar/GenAI/ComfyUI/output", comfy_output_dir)
-    else:
-        source_dir = "/Volumes/Sidecar/GenAI/ComfyUI/output"
+    # Get the SaveImage node configuration to determine output location
+    if output_node_id not in prompt_template:
+        raise ValueError(f"SaveImage node {output_node_id} not found in workflow")
 
-    # Find the most recently created image file
-    if not os.path.exists(source_dir):
-        raise ValueError(f"ComfyUI output directory not found: {source_dir}")
+    output_node_config = prompt_template[output_node_id]
 
-    image_files = [
-        f for f in os.listdir(source_dir)
-        if os.path.isfile(os.path.join(source_dir, f)) and f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))
-    ]
-
-    if not image_files:
-        raise ValueError(f"No image files found in {source_dir}")
-
-    # Sort by creation time (most recent first)
-    image_files.sort(key=lambda f: os.path.getctime(os.path.join(source_dir, f)), reverse=True)
-    latest_file = image_files[0]
-    source_path = os.path.join(source_dir, latest_file)
+    # Find the most recently created image file based on SaveImage config
+    source_path = find_latest_image_in_comfy_output(output_node_config)
+    ctx.info(f"Found latest image: {os.path.basename(source_path)}")
 
     # Read the image
     with open(source_path, "rb") as f:
         image_bytes = f.read()
 
-    ctx.info(f"Found latest image: {latest_file}")
-
     # Save to local disk with datetime-formatted filename
     os.makedirs(save_path, exist_ok=True)
 
     # Get file extension from source file
-    _, ext = os.path.splitext(latest_file)
+    _, ext = os.path.splitext(source_path)
 
     # Find existing files with today's date pattern to determine suffix letter
     date_str = datetime.now().strftime("%Y-%m-%d")
