@@ -194,36 +194,15 @@ def find_latest_image_in_comfy_output(output_node_config: dict) -> str:
     base_output_dir = "/Volumes/Sidecar/GenAI/ComfyUI/output"
 
     # Extract filename_prefix from SaveImage node to determine subdirectory
+    # Example: "chroma-radiance/image" means search in chroma-radiance subdirectory
     filename_prefix = output_node_config.get("inputs", {}).get("filename_prefix", "")
 
     # Parse the filename_prefix to extract directory path (before the last /)
-    # Example: "chroma-radiance/%date:dd-MM-yyyy%/image" -> check "chroma-radiance/*/"
     if "/" in filename_prefix:
         prefix_parts = filename_prefix.split("/")
         # Remove the actual filename part (last element)
         dir_parts = prefix_parts[:-1]
-
-        # Start with base directory and the first static part
-        search_dir = os.path.join(base_output_dir, dir_parts[0]) if dir_parts else base_output_dir
-
-        # If there are date format patterns in subdirectories, we need to search recursively
-        if any("%date:" in part for part in dir_parts):
-            # Search recursively from the known static directory
-            all_files = []
-            for root, dirs, files in os.walk(search_dir):
-                for f in files:
-                    if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
-                        all_files.append(os.path.join(root, f))
-
-            if not all_files:
-                raise ValueError(f"No image files found in {search_dir}")
-
-            # Sort by creation time (most recent first)
-            all_files.sort(key=lambda f: os.path.getctime(f), reverse=True)
-            return all_files[0]
-        else:
-            # No dynamic patterns, use the exact directory
-            search_dir = os.path.join(base_output_dir, *dir_parts)
+        search_dir = os.path.join(base_output_dir, *dir_parts)
     else:
         # No subdirectories, just search base output directory
         search_dir = base_output_dir
@@ -276,28 +255,9 @@ def download_and_save_image(output_data: dict, save_path: str, ctx: Context) -> 
     # Get file extension from source file
     _, ext = os.path.splitext(source_path)
 
-    # Find existing files with today's date pattern to determine suffix letter
-    date_str = datetime.now().strftime("%Y-%m-%d")
-    existing_files = [f for f in os.listdir(save_path) if f.startswith(date_str)]
-
-    # Determine next available letter suffix (a, b, c, etc.)
-    suffix = 'a'
-    if existing_files:
-        # Extract letters from existing files and find the next one
-        used_letters = []
-        for f in existing_files:
-            # Pattern: YYYY-MM-DDx.ext where x is a letter
-            base = os.path.splitext(f)[0]
-            if len(base) > len(date_str) and base[len(date_str)].isalpha():
-                used_letters.append(base[len(date_str)])
-
-        if used_letters:
-            # Find next letter after the highest used
-            last_letter = max(used_letters)
-            suffix = chr(ord(last_letter) + 1)
-
-    # Construct new filename: YYYY-MM-DDa.png
-    new_filename = f"{date_str}{suffix}{ext}"
+    # Format: YYYY-mm-dd_HHMMSS.ext
+    timestamp_str = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    new_filename = f"{timestamp_str}{ext}"
     full_path = os.path.join(save_path, new_filename)
 
     with open(full_path, "wb") as f:
