@@ -158,7 +158,8 @@ def submit_workflow(workflow: dict, ctx: Context) -> str:
     if resp.status != 200:
         return None
 
-    ctx.info("Submitted prompt")
+    if ctx:
+        ctx.info("Submitted prompt")
     resp_data = json.loads(resp.read())
     return resp_data.get("prompt_id")
 
@@ -170,7 +171,8 @@ def poll_for_completion(prompt_id: str, ctx: Context, max_attempts: int = 20) ->
         history_resp = urllib.request.urlopen(history_req)
 
         if history_resp.status == 200:
-            ctx.info("Checking status...")
+            if ctx:
+                ctx.info("Checking status...")
             history_data = json.loads(history_resp.read())
 
             if prompt_id in history_data:
@@ -243,7 +245,8 @@ def download_and_save_image(output_data: dict, save_path: str, ctx: Context) -> 
 
     # Find the most recently created image file based on SaveImage config
     source_path = find_latest_image_in_comfy_output(output_node_config)
-    ctx.info(f"Found latest image: {os.path.basename(source_path)}")
+    if ctx:
+        ctx.info(f"Found latest image: {os.path.basename(source_path)}")
 
     # Read the image
     with open(source_path, "rb") as f:
@@ -262,7 +265,8 @@ def download_and_save_image(output_data: dict, save_path: str, ctx: Context) -> 
 
     with open(full_path, "wb") as f:
         f.write(image_bytes)
-    ctx.info(f"Image saved locally to {full_path}")
+    if ctx:
+        ctx.info(f"Image saved locally to {full_path}")
 
     return image_bytes, full_path
 
@@ -319,9 +323,10 @@ def generate_image(
         if neg_prompt_node_id in prompt_template:
             prompt_template[neg_prompt_node_id]["inputs"]["text"] = negative_prompt
         else:
-            ctx.info(
-                f"Warning: Negative prompt node ID '{neg_prompt_node_id}' not found in workflow, skipping negative prompt"
-            )
+            if ctx:
+                ctx.info(
+                    f"Warning: Negative prompt node ID '{neg_prompt_node_id}' not found in workflow, skipping negative prompt"
+                )
 
     # Submit workflow to ComfyUI (SaveImage will use its default output directory)
     prompt_id = submit_workflow(prompt_template, ctx)
