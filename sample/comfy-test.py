@@ -16,4 +16,9 @@ result = generate_image(
     save_path="/Volumes/Sidecar/FFAI/The Lands Between Time/the-mules-court/img/",
 )
 
-print(result)
+if result.startswith("/") and os.path.exists(result):
+    print("✓ Image generated successfully")
+    print(f"  Saved to: {result}")
+    print(f"  Size: {os.path.getsize(result)} bytes")
+else:
+    print(f"Result: {result}")

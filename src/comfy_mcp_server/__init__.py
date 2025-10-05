@@ -116,8 +116,11 @@ pos_prompt_node_id = auto_discover_node_id(
 neg_prompt_node_id = auto_discover_node_id(
     workflow_data, ["negative"], "CLIPTextEncode"
 )
+filepath_node_id = auto_discover_node_id(
+    workflow_data, ["path", "savepath"], "Text String"
+)
 output_node_id = auto_discover_node_id(
-    workflow_data, ["save", "saveimage"], "SaveImage"
+    workflow_data, ["save", "saveimage"], "Image Save"
 )
 
 # Override with environment variables if provided
@@ -131,7 +134,8 @@ elif os.environ.get("POS_PROMPT_NODE_ID") is not None:
 
 if os.environ.get("NEG_PROMPT_NODE_ID") is not None:
     neg_prompt_node_id = os.environ.get("NEG_PROMPT_NODE_ID")
-
+if os.environ.get("FILEPATH_NODE_ID") is not None:
+    filepath_node_id = os.environ.get("FILEPATH_NODE_ID")
 if os.environ.get("OUTPUT_NODE_ID") is not None:
     output_node_id = os.environ.get("OUTPUT_NODE_ID")
 output_mode = os.environ.get("OUTPUT_MODE")
@@ -163,7 +167,7 @@ def submit_workflow(workflow: dict, ctx: Context) -> str:
 
 
 def poll_for_completion(
-    prompt_id: str, ctx: Context, max_attempts: int = 20
+    prompt_id: str, ctx: Context, max_attempts: int = 60
 ) -> dict | None:
     """Poll ComfyUI history API until workflow completes or times out"""
     for _ in range(max_attempts):
@@ -179,35 +183,105 @@ def poll_for_completion(
                 if history_data[prompt_id]["status"]["completed"]:
                     return history_data[prompt_id]
 
-        time.sleep(30)
+        time.sleep(5)
 
     return None
+
+
+def resolve_node_input(input_value, workflow_template: dict) -> str:
+    """Resolve a node input that might be a reference to another node's output
+
+    Args:
+        input_value: Either a direct value (str) or a node reference [node_id, output_idx]
+        workflow_template: The API format workflow to look up node values
+
+    Returns:
+        The resolved string value
+    """
+    if isinstance(input_value, list) and len(input_value) == 2:
+        # This is a node reference [node_id, output_idx]
+        source_node_id = str(input_value[0])
+        output_idx = input_value[1]
+
+        if source_node_id in workflow_template:
+            source_node = workflow_template[source_node_id]
+            # For Text String nodes, get the text input that corresponds to the output index
+            if source_node.get("class_type") == "Text String":
+                text_inputs = ["text", "text_b", "text_c", "text_d"]
+                if output_idx < len(text_inputs):
+                    input_name = text_inputs[output_idx]
+                    return source_node.get("inputs", {}).get(input_name, "")
+        return ""
+    else:
+        # Direct value
+        return str(input_value) if input_value is not None else ""
+
+
+def evaluate_time_tokens(path_str: str) -> str:
+    """Evaluate WAS time formatting tokens in a path string
+
+    Args:
+        path_str: String potentially containing [time(...)] tokens
+
+    Returns:
+        String with time tokens replaced with actual datetime values
+    """
+    import re
+
+    # Find all [time(...)] patterns
+    pattern = r"\[time\(([^)]+)\)\]"
+
+    def replace_time(match):
+        format_str = match.group(1)
+        return datetime.now().strftime(format_str)
+
+    return re.sub(pattern, replace_time, path_str)
 
 
 def find_latest_image_in_comfy_output(output_node_config: dict) -> str:
     """Find the latest image file from ComfyUI output directory based on SaveImage node config
 
     Args:
-        output_node_config: The SaveImage node configuration from the workflow
+        output_node_config: The SaveImage or Image Save node configuration from the workflow
 
     Returns:
         Full path to the most recently created image file
     """
     base_output_dir = "/Volumes/Sidecar/GenAI/ComfyUI/output"
+    node_class = output_node_config.get("class_type", "")
 
-    # Extract filename_prefix from SaveImage node to determine subdirectory
-    # Example: "chroma-radiance/image" means search in chroma-radiance subdirectory
-    filename_prefix = output_node_config.get("inputs", {}).get("filename_prefix", "")
+    # Handle WAS "Image Save" node
+    if node_class == "Image Save":
+        # Get output_path (may be a node reference or direct value)
+        output_path_input = output_node_config.get("inputs", {}).get("output_path", "")
+        output_path = resolve_node_input(output_path_input, prompt_template)
 
-    # Parse the filename_prefix to extract directory path (before the last /)
-    if "/" in filename_prefix:
-        prefix_parts = filename_prefix.split("/")
-        # Remove the actual filename part (last element)
-        dir_parts = prefix_parts[:-1]
-        search_dir = os.path.join(base_output_dir, *dir_parts)
+        # Evaluate time tokens in the output path
+        output_path = evaluate_time_tokens(output_path)
+
+        # Build the search directory
+        if output_path:
+            search_dir = os.path.join(base_output_dir, output_path)
+        else:
+            search_dir = base_output_dir
+
+    # Handle standard ComfyUI "SaveImage" node
     else:
-        # No subdirectories, just search base output directory
-        search_dir = base_output_dir
+        # Extract filename_prefix from SaveImage node to determine subdirectory
+        # Example: "chroma-radiance/image" means search in chroma-radiance subdirectory
+        filename_prefix = output_node_config.get("inputs", {}).get(
+            "filename_prefix", ""
+        )
+
+        # Parse the filename_prefix to extract directory path (before the last /)
+        if "/" in filename_prefix:
+            prefix_parts = filename_prefix.split("/")
+            # Remove the actual filename part (last element)
+            dir_parts = prefix_parts[:-1]
+            search_dir = os.path.join(base_output_dir, *dir_parts)
+        else:
+            # No subdirectories, just search base output directory
+            search_dir = base_output_dir
 
     # Find image files in the determined directory
     if not os.path.exists(search_dir):
@@ -299,8 +373,8 @@ def generate_image(
     positive_prompt: str,
     negative_prompt: str = "",
     save_path: str | None = None,
-    ctx: Context = None,
-):
+    ctx: Context | None = None,
+) -> str:
     """Generate an image using ComfyUI workflow
 
     Args:
@@ -339,7 +413,14 @@ def generate_image(
                 ctx.info(
                     f"Warning: Negative prompt node ID '{neg_prompt_node_id}' not found in workflow, skipping negative prompt"
                 )
-
+    if filepath_node_id is not None:
+        if filepath_node_id in prompt_template:
+            prompt_template[filepath_node_id]["inputs"]["text"] = save_path
+        else:
+            if ctx:
+                ctx.info(
+                    f"Warning: Filepath node ID '{filepath_node_id}' not found in workflow, skipping save path"
+                )
     # Submit workflow to ComfyUI (SaveImage will use its default output directory)
     prompt_id = submit_workflow(prompt_template, ctx)
     if not prompt_id:
@@ -364,12 +445,8 @@ def generate_image(
     except Exception as e:
         return f"Unexpected error during image save: {type(e).__name__}: {e}"
 
-    # Return result based on output mode
-    if output_mode is not None and output_mode.lower() == "url":
-        url_values = urllib.parse.urlencode(output_data)
-        return get_file_url(override_host, url_values)
-
-    return Image(data=image_bytes, format="png")
+    # Return the local file path
+    return full_path
 
 
 def find_nodes_by_title(title: str, wf_data: dict) -> list[str]:
