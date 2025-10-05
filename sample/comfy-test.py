@@ -11,10 +11,9 @@ os.environ["OUTPUT_MODE"] = "file"
 from comfy_mcp_server import generate_image
 
 result = generate_image(
-    positive_prompt="Premium sci-fi game card template, three distinct sections, top banner panel for title, large middle portrait frame with minimal geometric border, bottom text panel, deep purple to indigo gradient background, subtle gold geometric line accents, clean professional layout, Foundation universe aesthetic, sleek interface design, high quality digital art, sharp details, 4k",
-    negative_prompt="fantasy, medieval, ornate decorations, card back, symmetrical center, filled portrait, faces, text, characters, cluttered patterns, no divisions, merged sections, dragons, magic circles, busy design, blurry, low quality",
-    save_path="/Volumes/Sidecar/FFAI/The Lands Between Time/the-mules-court/img",
-    ctx=None,
+    positive_prompt="Playing card front template, mystical deep purple background with gradient, ornate Art Nouveau style golden borders and decorative frames, multiple empty framed sections for card information, sci-fi Foundation universe aesthetic, elegant geometric patterns, intricate filigree details, beige and cream colored frames with gold accents, symmetrical layout, professional game card design, clean empty spaces for text and artwork, luxurious royal appearance, psychohistory and galactic empire theme, high quality vector-style illustration",
+    negative_prompt="photorealistic, modern minimalist, cluttered, text, characters, people, low quality, blurry, pixelated, messy, asymmetric, crowded, busy background, watermark, signature, rough edges, amateur, simple borders, plain design, dull colors",
+    save_path="/Volumes/Sidecar/FFAI/The Lands Between Time/the-mules-court/img/",
 )
 
 print(result)
