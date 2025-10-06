@@ -1,7 +1,5 @@
 # Comfy MCP Server
 
-[![smithery badge](https://smithery.ai/badge/@lalanikarim/comfy-mcp-server)](https://smithery.ai/server/@lalanikarim/comfy-mcp-server)
-
 > A server using FastMCP framework to generate images based on prompts via a remote Comfy server.
 
 ## Overview
@@ -139,6 +137,56 @@ This function generates a comprehensive image generation prompt from specified t
 - `os`: For accessing environment variables.
 - `langchain`: For creating simple LLM Prompt chain to generate image generation prompt from topic.
 - `langchain-ollama`: For ollama specific modules for LangChain.
+
+## Architecture
+
+Comfy MCP Server is organized into focused modules for maintainability:
+
+### Core Modules
+
+- **`config.py`**: Configuration management
+  - `ComfyConfig` dataclass with environment variable loading
+  - Validation of required settings
+  - Centralized configuration access
+
+- **`workflow.py`**: Workflow handling
+  - `WorkflowManager` for loading and managing workflows
+  - Automatic node discovery by title and class
+  - Workflow format conversion (UI → API)
+  - Time token evaluation for dynamic paths
+
+- **`comfy_client.py`**: ComfyUI API client
+  - `ComfyClient` for all server communication
+  - Workflow submission and polling
+  - Image retrieval and local saving
+  - Configurable output directory handling
+
+- **`__init__.py`**: MCP server and tools
+  - FastMCP server initialization
+  - `generate_image()` tool for image generation
+  - `generate_prompt()` tool for AI prompt enhancement (optional)
+
+### Project Structure
+
+```
+comfy-mcp-server/
+├── src/
+│   └── comfy_mcp_server/
+│       ├── __init__.py        # MCP server and tools
+│       ├── config.py          # Configuration
+│       ├── workflow.py        # Workflow management
+│       └── comfy_client.py    # ComfyUI client
+├── tests/                     # Test suite
+│   ├── test_config.py
+│   └── test_workflow.py
+├── sample/                    # Example workflows
+├── .env.example              # Example configuration
+└── CONTRIBUTING.md           # Development guide
+```
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code style guidelines, and how to submit contributions.
 
 ## License
 
