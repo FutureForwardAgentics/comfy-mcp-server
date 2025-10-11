@@ -248,7 +248,8 @@ class WorkflowManager:
         neg_prompt_override: Optional[str] = None,
         filepath_override: Optional[str] = None,
         output_override: Optional[str] = None,
-    ) -> tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
+        latent_image_override: Optional[str] = None,
+    ) -> tuple[Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]]:
         """Auto-discover node IDs with optional overrides.
 
         Args:
@@ -256,9 +257,10 @@ class WorkflowManager:
             neg_prompt_override: Override for negative prompt node ID
             filepath_override: Override for filepath node ID
             output_override: Override for output node ID
+            latent_image_override: Override for latent image node ID
 
         Returns:
-            Tuple of (pos_prompt_id, neg_prompt_id, filepath_id, output_id)
+            Tuple of (pos_prompt_id, neg_prompt_id, filepath_id, output_id, latent_image_id)
         """
         # Auto-discover
         pos_prompt_id = auto_discover_node_id(
@@ -273,6 +275,9 @@ class WorkflowManager:
         output_id = auto_discover_node_id(
             self.workflow_data, ["save", "saveimage"], "Image Save"
         )
+        latent_image_id = auto_discover_node_id(
+            self.workflow_data, [], "EmptyChromaRadianceLatentImage"
+        )
 
         # Apply overrides
         if pos_prompt_override:
@@ -283,5 +288,7 @@ class WorkflowManager:
             filepath_id = filepath_override
         if output_override:
             output_id = output_override
+        if latent_image_override:
+            latent_image_id = latent_image_override
 
-        return pos_prompt_id, neg_prompt_id, filepath_id, output_id
+        return pos_prompt_id, neg_prompt_id, filepath_id, output_id, latent_image_id

@@ -45,12 +45,13 @@ api_workflow = workflow_manager.api_workflow
 prompt_template = api_workflow  # For use in generate_image
 
 # Discover nodes
-pos_prompt_node_id, neg_prompt_node_id, filepath_node_id, output_node_id = (
+pos_prompt_node_id, neg_prompt_node_id, filepath_node_id, output_node_id, latent_image_node_id = (
     workflow_manager.discover_nodes(
         pos_prompt_override=cfg.pos_prompt_node_id,
         neg_prompt_override=cfg.neg_prompt_node_id,
         filepath_override=cfg.filepath_node_id,
         output_override=cfg.output_node_id,
+        latent_image_override=cfg.latent_image_node_id,
     )
 )
 
@@ -85,6 +86,8 @@ def generate_image(
     positive_prompt: str,
     negative_prompt: str = "",
     save_path: str | None = None,
+    width: int | None = None,
+    height: int | None = None,
     ctx: Context | None = None,
 ) -> str:
     """Generate an image using ComfyUI workflow.
@@ -93,6 +96,8 @@ def generate_image(
         positive_prompt: The positive prompt describing what to generate
         negative_prompt: The negative prompt describing what to avoid (optional)
         save_path: Absolute path to directory where images should be saved locally
+        width: Width of the generated image in pixels (optional)
+        height: Height of the generated image in pixels (optional)
         ctx: MCP context for logging
 
     Returns:
@@ -132,6 +137,19 @@ def generate_image(
             if ctx:
                 ctx.info(
                     f"Warning: Filepath node ID '{filepath_node_id}' not found in workflow, skipping save path"
+                )
+
+    # Set width and height if provided and node is configured
+    if latent_image_node_id is not None:
+        if latent_image_node_id in prompt_template:
+            if width is not None:
+                prompt_template[latent_image_node_id]["inputs"]["width"] = width
+            if height is not None:
+                prompt_template[latent_image_node_id]["inputs"]["height"] = height
+        else:
+            if ctx and (width is not None or height is not None):
+                ctx.info(
+                    f"Warning: Latent image node ID '{latent_image_node_id}' not found in workflow, skipping dimensions"
                 )
 
     # Submit workflow to ComfyUI

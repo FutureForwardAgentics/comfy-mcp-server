@@ -17,6 +17,7 @@ class ComfyConfig:
         neg_prompt_node_id: Node ID for negative prompt (auto-discovered if not set)
         filepath_node_id: Node ID for file path (auto-discovered if not set)
         output_node_id: Node ID for output/save image (auto-discovered if not set)
+        latent_image_node_id: Node ID for latent image dimensions (auto-discovered if not set)
         output_mode: Output mode - 'file' or 'url'
         working_dir: Working directory for saving images
         comfy_output_dir: Base directory where ComfyUI saves images
@@ -31,6 +32,7 @@ class ComfyConfig:
     neg_prompt_node_id: Optional[str]
     filepath_node_id: Optional[str]
     output_node_id: Optional[str]
+    latent_image_node_id: Optional[str]
     output_mode: str
     working_dir: Optional[str]
     comfy_output_dir: str
@@ -63,6 +65,7 @@ class ComfyConfig:
             neg_prompt_node_id=os.environ.get("NEG_PROMPT_NODE_ID"),
             filepath_node_id=os.environ.get("FILEPATH_NODE_ID"),
             output_node_id=os.environ.get("OUTPUT_NODE_ID"),
+            latent_image_node_id=os.environ.get("LATENT_IMAGE_NODE_ID"),
             output_mode=os.environ.get("OUTPUT_MODE", "file"),
             working_dir=os.environ.get("COMFY_WORKING_DIR"),
             comfy_output_dir=os.environ.get(
